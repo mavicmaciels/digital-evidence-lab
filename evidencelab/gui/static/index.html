@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="del-token" content="__DEL_SESSION_TOKEN__">
+<title>Digital Evidence Lab</title>
+<link rel="stylesheet" href="/static/app.css">
+<script src="/static/app.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Pular para o conteúdo</a>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true"></span>
+    <div>
+      <p class="brand-name">Digital Evidence Lab</p>
+      <p class="brand-sub">Triagem forense de e-mails suspeitos (.eml)</p>
+    </div>
+  </div>
+  <p class="locality" title="A evidência não é enviada a serviço externo">
+    <span class="dot" aria-hidden="true"></span>Local · 127.0.0.1 · sem acesso externo
+  </p>
+</header>
+
+<main id="main">
+  <section class="panel intake" aria-labelledby="intake-title">
+    <div class="panel-head">
+      <h1 id="intake-title">Nova análise</h1>
+      <p class="hint">Nenhuma URL do e-mail é acessada e nenhum anexo é executado ou disponibilizado.</p>
+    </div>
+    <form id="intake-form" novalidate>
+      <div class="field field-file">
+        <span class="label" id="eml-label">Evidência (.eml)</span>
+        <div class="file-picker">
+          <input id="eml" name="eml" type="file" accept=".eml,message/rfc822" required
+                 class="file-input" aria-labelledby="eml-label" aria-describedby="eml-name eml-info">
+          <label for="eml" class="btn file-btn">Selecionar arquivo</label>
+          <span id="eml-name" class="file-name mono">nenhum arquivo selecionado</span>
+        </div>
+        <p id="eml-info" class="field-note mono"></p>
+      </div>
+      <div class="field">
+        <label for="examiner">Examinador</label>
+        <input id="examiner" name="examiner" type="text" maxlength="120" autocomplete="name" required>
+      </div>
+      <div class="field">
+        <label for="authserv">authserv-id <span class="optional">opcional</span></label>
+        <input id="authserv" name="authserv" type="text" maxlength="253" spellcheck="false"
+               autocomplete="off" aria-describedby="authserv-note" class="mono">
+        <p id="authserv-note" class="field-note">Somente de um serviço que você tem fundamento externo para considerar confiável.</p>
+      </div>
+      <div class="field field-action">
+        <button id="analyze" type="submit" class="btn-primary" disabled>Analisar evidência</button>
+      </div>
+    </form>
+    <div id="status" class="status" role="status" aria-live="polite" hidden></div>
+  </section>
+
+  <section id="empty" class="panel empty" aria-label="Como a análise funciona">
+    <ol class="pipeline">
+      <li><strong>Recepção</strong><span>SHA-256 calculado no navegador e conferido no servidor local</span></li>
+      <li><strong>Aquisição</strong><span>cópia de trabalho somente leitura e hash inicial</span></li>
+      <li><strong>Análise</strong><span>cabeçalhos, Received, Authentication-Results declarados, links e anexos</span></li>
+      <li><strong>Integridade</strong><span>SHA-256 recalculado após a análise</span></li>
+      <li><strong>Relatórios</strong><span>JSON, Markdown e cadeia de custódia encadeada</span></li>
+    </ol>
+  </section>
+
+  <div id="results" hidden>
+    <section class="casebar panel" aria-label="Caso">
+      <dl class="casemeta">
+        <div><dt>Caso</dt><dd id="case-id" class="mono"></dd></div>
+        <div><dt>Evidência</dt><dd id="case-file" class="mono"></dd></div>
+        <div><dt>Examinador</dt><dd id="case-examiner"></dd></div>
+      </dl>
+      <div class="downloads">
+        <a id="dl-json" class="btn" download>Baixar JSON</a>
+        <a id="dl-md" class="btn" download>Baixar Markdown</a>
+      </div>
+    </section>
+
+    <div class="cards">
+      <section class="card" aria-labelledby="c-int">
+        <h2 id="c-int" class="card-label">Integridade da cópia de trabalho</h2>
+        <p id="integrity-value" class="card-value"></p>
+        <p id="integrity-detail" class="card-detail"></p>
+        <p class="caveat" id="caveat-hash"></p>
+      </section>
+      <section class="card" aria-labelledby="c-sus">
+        <h2 id="c-sus" class="card-label">Nível de suspeita <span class="tag">heurístico</span></h2>
+        <p class="card-value"><span id="level-value"></span> <span id="level-score" class="score mono"></span></p>
+        <ul id="level-counts" class="counts" aria-label="Indicadores por severidade"></ul>
+        <p class="caveat" id="caveat-heuristic"></p>
+      </section>
+      <section class="card" aria-labelledby="c-sha">
+        <h2 id="c-sha" class="card-label">SHA-256 da cópia de trabalho</h2>
+        <p id="sha-value" class="hash mono"></p>
+        <div class="card-actions">
+          <button id="copy-sha" type="button" class="btn">Copiar SHA-256</button>
+          <span id="copy-feedback" class="copy-feedback" role="status" aria-live="polite"></span>
+        </div>
+        <p class="caveat">Cópia somente leitura; o original não é conhecido pela ferramenta (recebido via navegador).</p>
+      </section>
+    </div>
+
+    <nav class="sections-nav" aria-label="Seções do resultado">
+      <a href="#sec-auth">Autenticação</a>
+      <a href="#sec-ind">Indicadores <span id="n-ind" class="count"></span></a>
+      <a href="#sec-links">Links <span id="n-links" class="count"></span></a>
+      <a href="#sec-att">Anexos <span id="n-att" class="count"></span></a>
+      <a href="#sec-rcv">Received <span id="n-rcv" class="count"></span></a>
+      <a href="#sec-tl">Timeline</a>
+      <a href="#sec-cus">Custódia</a>
+    </nav>
+
+    <section id="sec-auth" class="panel" aria-labelledby="h-auth">
+      <div class="panel-head">
+        <h2 id="h-auth">Autenticação declarada</h2>
+        <span class="tag tag-warn">declarado · não revalidado</span>
+      </div>
+      <p class="notice" id="caveat-auth"></p>
+      <p class="kv"><span class="k">Situação</span> <span id="auth-situation"></span></p>
+      <div id="auth-mechs" class="mechs"></div>
+      <div class="table-wrap"><table id="auth-table">
+        <caption class="sr-only">Cabeçalhos Authentication-Results encontrados</caption>
+        <thead><tr><th scope="col">Pos.</th><th scope="col">authserv-id</th><th scope="col">Declarado</th><th scope="col">Selecionado</th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+    </section>
+
+    <section id="sec-ind" class="panel" aria-labelledby="h-ind">
+      <div class="panel-head">
+        <h2 id="h-ind">Indicadores</h2>
+        <span class="tag">heurísticos</span>
+      </div>
+      <ul id="indicators" class="indicators"></ul>
+    </section>
+
+    <section id="sec-links" class="panel" aria-labelledby="h-links">
+      <div class="panel-head">
+        <h2 id="h-links">Links</h2>
+        <span class="tag">desarmados · não acessados · não clicáveis</span>
+      </div>
+      <div class="table-wrap"><table id="links-table">
+        <caption class="sr-only">Links encontrados no e-mail, desarmados</caption>
+        <thead><tr><th scope="col">Origem</th><th scope="col">Destino (desarmado)</th><th scope="col">Texto exibido no e-mail</th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+    </section>
+
+    <section id="sec-att" class="panel" aria-labelledby="h-att">
+      <div class="panel-head">
+        <h2 id="h-att">Anexos</h2>
+        <span class="tag">não extraídos · não executados · sem download</span>
+      </div>
+      <div class="table-wrap"><table id="att-table">
+        <caption class="sr-only">Anexos encontrados, apenas metadados</caption>
+        <thead><tr><th scope="col">Nome</th><th scope="col">Tipo</th><th scope="col" class="num">Tamanho</th><th scope="col">SHA-256</th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+    </section>
+
+    <section id="sec-rcv" class="panel" aria-labelledby="h-rcv">
+      <div class="panel-head">
+        <h2 id="h-rcv">Rota Received</h2>
+        <span class="tag">ordem cronológica</span>
+      </div>
+      <p class="notice">Saltos anteriores à entrada na infraestrutura do destinatário podem ser forjados pelo remetente.</p>
+      <div class="table-wrap"><table id="rcv-table">
+        <caption class="sr-only">Saltos do cabeçalho Received</caption>
+        <thead><tr><th scope="col">#</th><th scope="col">De</th><th scope="col">IP</th><th scope="col">Por</th><th scope="col">Protocolo</th><th scope="col">UTC</th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+    </section>
+
+    <section id="sec-tl" class="panel" aria-labelledby="h-tl">
+      <div class="panel-head">
+        <h2 id="h-tl">Timeline</h2>
+        <span class="tag">UTC</span>
+      </div>
+      <ol id="timeline" class="timeline"></ol>
+    </section>
+
+    <section id="sec-cus" class="panel" aria-labelledby="h-cus">
+      <div class="panel-head">
+        <h2 id="h-cus">Cadeia de custódia</h2>
+        <span id="chain-state" class="tag"></span>
+      </div>
+      <p class="notice" id="caveat-custody"></p>
+      <div class="table-wrap"><table id="cus-table">
+        <caption class="sr-only">Eventos da cadeia de custódia</caption>
+        <thead><tr><th scope="col">UTC</th><th scope="col">Ação</th><th scope="col">Examinador</th><th scope="col">Detalhes</th><th scope="col">SHA-256</th><th scope="col">Hash do evento</th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+    </section>
+
+    <section class="panel" aria-labelledby="h-notes">
+      <div class="panel-head"><h2 id="h-notes">Notas metodológicas</h2></div>
+      <ul class="notes">
+        <li><strong>Nível de suspeita:</strong> <span id="note-heuristic"></span></li>
+        <li><strong>Hash:</strong> <span id="note-hash"></span></li>
+        <li><strong>SPF/DKIM/DMARC:</strong> <span id="note-auth"></span></li>
+        <li><strong>Cadeia de custódia:</strong> <span id="note-custody"></span></li>
+      </ul>
+    </section>
+  </div>
+</main>
+
+<footer class="footer">
+  <p>Projeto educacional e de portfólio. Não substitui perícia forense nem procedimentos institucionais de preservação de evidências.</p>
+</footer>
+</body>
+</html>

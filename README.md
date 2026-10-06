@@ -30,7 +30,7 @@ memória para o cálculo do hash. Tudo usa só a biblioteca padrão do Python.
 | **Problema** | E-mails de phishing são o primeiro artefato de muitos incidentes e podem virar prova. Precisam ser analisados sem alterar o arquivo, sem disparar o conteúdo e com registro de cada manuseio. |
 | **O que a ferramenta faz** | Aquisição com hash, extração de metadados, indicadores heurísticos, timeline, cadeia de custódia e relatórios. |
 | **Competências demonstradas** | DFIR (aquisição, integridade, timeline, custódia), análise de phishing (cabeçalhos, `Received`, Authentication-Results, URLs, anexos), desenvolvimento seguro (entrada hostil, saída neutralizada, testes) e rigor sobre o que cada evidência permite afirmar. |
-| **Como executar** | `python3 -m evidencelab analyze samples/email_suspeito.eml` (Python 3.10+, sem dependências) |
+| **Como executar** | Interface visual: `python3 -m evidencelab.gui` · CLI: `python3 -m evidencelab analyze samples/email_suspeito.eml` (Python 3.10+, sem dependências) |
 | **Limites** | Não revalida SPF/DKIM/DMARC, não consulta DNS nem reputação, não usa sandbox nem antivírus. O nível de suspeita é heurístico. Veja [Limitações](#limitações). |
 
 ## Demonstração
@@ -87,7 +87,41 @@ resultado ainda é ALTO (pontuação 14), por causa dos demais indicadores.
 
 ## Como executar
 
-Requer **Python 3.10+**. Não há dependências externas.
+Requer **Python 3.10+**. Não há dependências externas. Há duas formas de uso, ambas sobre
+o mesmo motor de análise.
+
+### Interface visual
+
+```bash
+python3 -m evidencelab.gui
+```
+
+O comando inicia um servidor local, exibe no terminal o endereço da sessão
+(`http://127.0.0.1:<porta>/?t=<token>`) e abre o navegador. Na tela, selecione o `.eml`,
+informe o examinador e, se for o caso, o `authserv-id`, e clique em **Analisar
+evidência**. Os casos são gravados em `casos/` (opções: `--cases-dir`, `--port`,
+`--no-browser`).
+
+O resultado mostra cards de integridade, nível heurístico de suspeita e SHA-256 (com
+botão de copiar), além de seções para autenticação declarada, indicadores, links,
+anexos, rota `Received`, timeline e cadeia de custódia. Os relatórios JSON e Markdown
+podem ser baixados direto da tela. Os avisos sobre heurística, hash, resultados declarados
+de SPF/DKIM/DMARC e cadeia de custódia ficam permanentemente visíveis nos próprios
+componentes.
+
+Captura real da análise de `samples/email_suspeito.eml`, com `--authserv-id`
+`mx.vitima.example`:
+
+![Interface do Digital Evidence Lab analisando samples/email_suspeito.eml](docs/img/gui-desktop.png)
+
+<details>
+<summary>Versão em tela estreita (390 px)</summary>
+
+![Interface em tela estreita](docs/img/gui-mobile.png)
+
+</details>
+
+### CLI
 
 ```bash
 # Adquirir e analisar (cria casos/email_suspeito/)
@@ -102,6 +136,21 @@ python3 -m evidencelab verify casos/email_suspeito
 
 Códigos de saída: `0` sucesso; `1` falha de integridade, de encadeamento da custódia ou
 erro de análise; `2` arquivo ou caso não encontrado.
+
+### A interface é exclusivamente local
+
+- O servidor escuta **somente em `127.0.0.1`**, sem opção para outro endereço. A
+  evidência vai do navegador para esse servidor no mesmo computador e **não é enviada a
+  nenhum serviço externo**.
+- A página não carrega nenhum recurso de terceiros (sem CDN, fontes ou scripts externos),
+  e a política de segurança de conteúdo (CSP) do próprio servidor bloqueia qualquer
+  conexão a outra origem.
+- O SHA-256 é calculado no navegador antes do envio e conferido no servidor. Se os
+  valores divergirem, a transferência é descartada. A recepção pela interface é o
+  primeiro evento da cadeia de custódia.
+- Como o navegador não informa o caminho original do arquivo selecionado, a custódia de
+  um caso criado pela interface registra o nome, o tamanho e o hash recebidos, não o
+  caminho de origem.
 
 ## Arquitetura
 
@@ -188,17 +237,24 @@ digital-evidence-lab/
 │   ├── hashing.py         # SHA-256 em blocos
 │   ├── report.py          # painel, JSON e Markdown
 │   ├── sanitize.py        # escape de controle/bidi, Markdown seguro, defang
-│   └── timeline.py        # linha do tempo unificada em UTC
+│   ├── timeline.py        # linha do tempo unificada em UTC
+│   └── gui/               # interface visual local (python -m evidencelab.gui)
+│       ├── server.py      # servidor HTTP em 127.0.0.1 (token, Host/Origin, CSP)
+│       ├── view.py        # resultado do motor -> dados neutralizados para a tela
+│       └── static/        # index.html, app.css, app.js (sem recursos externos)
 ├── samples/
 │   └── email_suspeito.eml # phishing fictício (domínios .example, IPs RFC 5737)
 ├── tests/
-│   └── test_evidencelab.py
+│   ├── test_evidencelab.py
+│   └── test_gui.py
+├── docs/img/              # capturas reais da interface
 ├── .github/workflows/
 │   └── tests.yml          # CI: unittest em Python 3.10–3.13
 ├── LICENSE                # MIT
 └── README.md
 
 casos/<nome>/              # gerado em tempo de execução (ignorado pelo git)
+├── recebido/<arquivo>.eml    # (somente via interface) arquivo recebido do navegador
 ├── evidencia/<arquivo>.eml   # cópia de trabalho, somente leitura
 ├── cadeia_custodia.json
 ├── relatorio_<nome>.json
@@ -211,7 +267,7 @@ casos/<nome>/              # gerado em tempo de execução (ignorado pelo git)
 python3 -m unittest -v
 ```
 
-São 43 testes, executados pelo GitHub Actions em Python 3.10, 3.11, 3.12 e 3.13 e
+São 69 testes, executados pelo GitHub Actions em Python 3.10, 3.11, 3.12 e 3.13 e
 organizados em grupos:
 
 - **Hash:** valor conhecido do SHA-256 (vetor `abc`) e abreviação.
@@ -234,14 +290,42 @@ organizados em grupos:
 - **Segurança:** nenhuma conexão de rede nem criação de processo durante o fluxo
   (`socket`, `subprocess` e `os.system` bloqueados no teste); nenhum anexo gravado no
   disco; sequências ANSI e HTML neutralizados no terminal e no Markdown.
+- **Interface (`test_gui.py`):**
+  - análise ponta a ponta de `samples/email_suspeito.eml` e download dos relatórios;
+  - página e API exigem o token da sessão;
+  - `Host` estranho (DNS rebinding), `Origin` ausente, estranho ou `null` e
+    `Transfer-Encoding` são recusados;
+  - hash divergente entre navegador e servidor descarta o envio;
+  - corpo acima do limite é recusado sem ser lido;
+  - nome de arquivo hostil (`../`) fica restrito ao diretório do caso;
+  - arquivos estáticos só por lista fixa, e relatórios só de casos desta sessão;
+  - cabeçalhos de segurança e CSP sem `unsafe-inline` presentes;
+  - nenhuma URL `http(s)://` chega intacta ao navegador e nenhum anexo é gravado ou servido;
+  - falha inesperada responde com erro genérico;
+  - o servidor só se conecta a `127.0.0.1` durante a análise;
+  - `app.js` não usa `innerHTML`, `eval` nem equivalentes;
+  - `run_case` sem `intake_note` mantém o comportamento do CLI.
 
 ## Aspectos de segurança
 
 - **Nada é executado nem acessado.** Anexos são decodificados apenas em memória para o
   cálculo do hash e nunca são gravados nem abertos. URLs são tratadas como texto e
-  nenhuma requisição de rede é feita. O pacote não importa `socket`, `subprocess`,
-  `urllib.request` ou equivalentes, e um teste bloqueia rede e criação de processos
-  durante o fluxo completo.
+  nenhuma requisição de rede é feita. Os módulos de análise não importam `socket`,
+  `subprocess`, `urllib.request` ou equivalentes, e um teste bloqueia rede e criação de
+  processos durante o fluxo completo. A interface visual (`evidencelab.gui`) usa
+  `http.server` apenas para escutar em `127.0.0.1`. Um teste confirma que, durante uma
+  análise pela interface, nenhuma conexão sai de `127.0.0.1`.
+- **Superfície HTTP da interface.** O servidor escuta só em `127.0.0.1` e recusa `Host`
+  diferente de `127.0.0.1`/`localhost` na porta da sessão. Todas as rotas exigem um token
+  aleatório por sessão, exceto o CSS, o JavaScript e o ícone vazio da página, que são públicos. O envio exige `Origin` igual ao do
+  servidor e um cabeçalho próprio, o que impede envios disparados por outros sites. A
+  página usa CSP restritiva, sem script inline nem recursos externos. Os arquivos
+  estáticos são servidos por lista fixa e os relatórios só para casos criados na sessão.
+  O corpo é limitado a 50 MiB e lido pelo `Content-Length` exato.
+- **Tela sem HTML vindo do e-mail.** Todo texto da evidência é neutralizado no servidor
+  (controle/bidi escapados e URLs desarmadas, inclusive no texto exibido de links) e
+  inserido na página só como texto. Nenhuma URL do e-mail vira link, e anexos aparecem
+  apenas como metadados, sem download.
 - **Entrada hostil.** Limite de tamanho (50 MiB), parsing com `email.policy.default`,
   tolerância a cabeçalhos e MIME malformados (os defeitos são registrados no relatório)
   e extração de links com `html.parser`, sem renderizar HTML.
@@ -305,6 +389,15 @@ os limites de cada conclusão.
   substitui carimbo de tempo (RFC 3161) nem armazenamento WORM.
 - **Somente leitura.** A permissão somente leitura na cópia protege contra acidentes,
   não contra um usuário privilegiado.
+- **Interface local.**
+  - A origem do arquivo é o navegador, então a custódia registra o nome, o tamanho e o
+    hash recebidos, não o caminho original.
+  - O token da sessão fica no endereço da página, que vai para o histórico do navegador, e
+    é passado ao processo do navegador ao abri-lo. A conexão local não usa TLS.
+  - A interface protege contra outros sites e contra quem não tem o token, mas não contra
+    um usuário ou processo com acesso à mesma conta do sistema.
+  - Não há limite de conexões simultâneas: alguém no mesmo computador pode sobrecarregar
+    o servidor.
 
 ## Referências técnicas e normativas
 
