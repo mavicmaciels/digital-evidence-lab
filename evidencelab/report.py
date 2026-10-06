@@ -15,19 +15,43 @@ from evidencelab.sanitize import defang, md, md_code, safe
 from evidencelab.timeline import build_timeline
 
 WIDTH = 64
+INTEGRITY_OK = "● VERIFICADA (SHA-256 igual ao valor registrado na aquisição)"
+INTEGRITY_FAIL = "● FALHA (SHA-256 diverge do valor registrado)"
 
 SCOPE_NOTE = (
-    "O hash atesta apenas que a cópia de trabalho não foi alterada desde a "
-    "aquisição. Não comprova a autenticidade do conteúdo nem a autoria da mensagem."
+    "O SHA-256 é usado para verificar se os bytes da cópia de trabalho permanecem "
+    "inalterados em relação ao valor registrado na aquisição. A correspondência "
+    "auxilia a verificação de integridade, mas não demonstra autoria, não demonstra, "
+    "isoladamente, autenticidade nem a veracidade do conteúdo, e depende da "
+    "confiabilidade do valor de referência e do procedimento de aquisição."
 )
 HEURISTIC_NOTE = (
     "O nível de suspeita é heurístico: indica prioridade de análise, não prova "
     "fraude nem legitimidade."
 )
 AUTH_NOTE = (
-    "Resultados SPF/DKIM/DMARC são os declarados pelo servidor receptor no "
-    "cabeçalho Authentication-Results; não foram revalidados por esta ferramenta."
+    "Authentication-Results pode ser inserido por qualquer participante do envio, "
+    "inclusive o remetente (RFC 8601). A ferramenta não determina sozinha qual "
+    "cabeçalho veio de infraestrutura confiável: só pontua o cabeçalho cujo "
+    "authserv-id o analista selecionou (--authserv-id), com base externa para "
+    "confiar nesse serviço. Os resultados são os declarados nesse cabeçalho; "
+    "SPF/DKIM/DMARC não são revalidados, e \"pass\" não indica que o e-mail é legítimo."
 )
+
+
+def _declared(header) -> str:
+    parts = [f"{mech}={'/'.join(values)}" for mech, values in header.declared.items()]
+    return " ".join(parts) or "(sem spf/dkim/dmarc)"
+
+
+def _auth_title(auth) -> str:
+    if auth.selected:
+        return f"resultado declarado no Authentication-Results selecionado: {auth.authserv_id}; não revalidado"
+    if not auth.headers:
+        return "sem Authentication-Results"
+    if auth.requested_authserv_id:
+        return f"authserv-id selecionado ({auth.requested_authserv_id}) não encontrado; não avaliado"
+    return "nenhum Authentication-Results selecionado; não avaliado"
 
 
 def _utc(dt: datetime | None) -> str:
@@ -48,15 +72,23 @@ def render_panel(result: CaseResult) -> str:
     lines.append("CADEIA DE CUSTÓDIA (UTC)")
     lines += [f"{_hm(e.timestamp)}  {e.action}" for e in result.custody.events]
     lines += ["", "INTEGRIDADE DA CÓPIA DE TRABALHO"]
-    lines.append("● VERIFICADA (hash inalterado)" if result.integrity_ok else "● FALHA (hash divergente)")
-    lines += ["", f"AUTENTICAÇÃO ({'declarada por ' + safe(auth.authserv_id) if auth.authserv_id else 'sem Authentication-Results'})"]
-    for res in auth.results.values():
-        raw = f" ({safe(res.result)})" if res.result else ""
-        lines.append(f"  {res.mechanism.upper():<6}{res.status}{raw}")
+    lines.append(INTEGRITY_OK if result.integrity_ok else INTEGRITY_FAIL)
+    lines += ["", f"AUTENTICAÇÃO ({safe(_auth_title(auth))})"]
+    if auth.selected:
+        for res in auth.results.values():
+            raw = f" ({safe(res.result)})" if res.result else ""
+            lines.append(f"  {res.mechanism.upper():<6}{res.status}{raw}")
+    else:
+        for h in auth.headers:
+            lines.append(f"  [{h.position}] {safe(h.authserv_id or '(vazio)')}: {safe(_declared(h))} (declarado)")
     lines += ["", f"NÍVEL DE SUSPEITA (heurístico): {a.suspicion_level}  [pontuação {a.score}]"]
     for ind in a.indicators:
         lines.append(f"  [{ind.severity:^5}] {safe(ind.description)}")
-    lines += ["", "Notas:", f"- {SCOPE_NOTE}", f"- {HEURISTIC_NOTE}", "=" * WIDTH]
+    lines += ["", "Notas:", f"- {SCOPE_NOTE}", f"- {HEURISTIC_NOTE}"]
+    if auth.headers:
+        lines.append("- Authentication-Results: só pontua o cabeçalho do authserv-id selecionado pelo "
+                     "analista; resultados declarados, não revalidados.")
+    lines.append("=" * WIDTH)
     return "\n".join(lines)
 
 
@@ -66,14 +98,15 @@ def to_dict(result: CaseResult) -> dict:
         "evidencia": result.evidence_path.name,
         "caminho": str(result.evidence_path),
         "sha256": result.sha256,
-        "integridade_copia": "hash inalterado" if result.integrity_ok else "hash divergente",
+        "integridade_copia": "sha256 igual ao registrado" if result.integrity_ok else "sha256 divergente",
         "nivel_suspeita": a.suspicion_level,
         "pontuacao": a.score,
         "cabecalhos": a.headers,
         "autenticacao": {
-            "authserv_id": a.authentication.authserv_id,
-            "cabecalhos_encontrados": a.authentication.headers_found,
-            "resultados": {k: asdict(v) for k, v in a.authentication.results.items()},
+            "authserv_id_solicitado": a.authentication.requested_authserv_id,
+            "authserv_id_selecionado": a.authentication.authserv_id or None,
+            "cabecalhos_declarados": [asdict(h) for h in a.authentication.headers],
+            "resultados_cabecalho_selecionado": {k: asdict(v) for k, v in a.authentication.results.items()},
         },
         "saltos_received": [{**asdict(h), "timestamp": _utc(h.timestamp)} for h in a.hops],
         "links": [{**asdict(link), "url_defanged": defang(link.url)} for link in a.links],
@@ -99,7 +132,7 @@ def to_markdown(result: CaseResult) -> str:
         f"# Relatório de análise — {md(result.evidence_path.name)}",
         "",
         f"- **SHA-256 da cópia de trabalho:** `{result.sha256}`",
-        f"- **Integridade da cópia:** {'hash inalterado desde a aquisição' if result.integrity_ok else 'HASH DIVERGENTE'}",
+        f"- **Integridade da cópia:** {'SHA-256 igual ao valor registrado na aquisição' if result.integrity_ok else 'SHA-256 DIVERGENTE'}",
         f"- **Nível de suspeita (heurístico):** {a.suspicion_level} (pontuação {a.score})",
         f"- **Examinador:** {md(result.custody.examiner)}",
         "",
@@ -112,11 +145,18 @@ def to_markdown(result: CaseResult) -> str:
     ]
     out += [f"| {k} | {md(v)} |" for k, v in a.headers.items()]
     out += ["", "## Autenticação (SPF / DKIM / DMARC)", "", f"> {AUTH_NOTE}", ""]
-    out.append(f"- **authserv-id:** {md(auth.authserv_id) or '(nenhum cabeçalho Authentication-Results)'}")
-    out += [
-        f"- **{r.mechanism.upper()}:** {r.status}" + (f" (`{md(r.result)}`)" if r.result else "")
-        for r in auth.results.values()
-    ]
+    out.append(f"- **Situação:** {md(_auth_title(auth))}")
+    if auth.selected:
+        out += [
+            f"- **{r.mechanism.upper()}:** {r.status}" + (f" (`{md(r.result)}`)" if r.result else "")
+            for r in auth.results.values()
+        ]
+    if auth.headers:
+        out += ["", "| Posição | authserv-id | Declarado | Selecionado |", "|---|---|---|---|"]
+        out += [
+            f"| {h.position} | {md(h.authserv_id or '(vazio)')} | {md(_declared(h))} | {'sim' if h.selected else 'não'} |"
+            for h in auth.headers
+        ]
     out += [
         "", "## Rota de entrega (Received)", "",
         "> Saltos anteriores à entrada na infraestrutura do destinatário podem ser forjados pelo remetente.",

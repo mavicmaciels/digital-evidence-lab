@@ -66,11 +66,13 @@ IPV6_RE = re.compile(r"\[(?:IPv6:)?([0-9a-f:.]*:[0-9a-f:.]*)\]", re.IGNORECASE)
 RESINFO_RE = re.compile(r"^([a-z0-9_-]+)(?:/\d+)?\s*=\s*([a-z]+)", re.IGNORECASE)
 
 AUTH_MECHANISMS = ("spf", "dkim", "dmarc")
-# Classificação dos resultados (RFC 8601 / RFC 7208 / RFC 6376 / RFC 7489).
+# Classificação dos resultados declarados (RFC 8601 / RFC 7208 / RFC 6376 / RFC 7489).
+# "pass" é apenas o resultado declarado: não significa que o e-mail seja legítimo.
+NOT_EVALUATED = "não avaliado"  # nenhum Authentication-Results selecionado
 AUTH_STATUS = {
     None: "ausente",  # nenhum resultado registrado para o mecanismo
     "none": "ausente",  # sem registro SPF / mensagem sem assinatura DKIM / sem política DMARC
-    "pass": "aprovado",
+    "pass": "pass declarado",
     "fail": "falha",
     "softfail": "falha fraca",
     "neutral": "inconclusivo",
@@ -78,6 +80,8 @@ AUTH_STATUS = {
     "temperror": "inconclusivo",
     "permerror": "inconclusivo",
 }
+
+BIDI_CONTROLS = {chr(c) for c in (*range(0x202A, 0x202F), *range(0x2066, 0x206A), 0x200E, 0x200F)}
 
 SEVERITY_WEIGHT = {"alta": 3, "média": 2, "baixa": 1, "info": 0}
 
@@ -100,15 +104,35 @@ class ReceivedHop:
 @dataclass
 class AuthResult:
     mechanism: str
-    result: str | None  # valor bruto informado pelo servidor, ou None se ausente
-    status: str  # aprovado / falha / falha fraca / inconclusivo / ausente
+    result: str | None  # valor bruto declarado no cabeçalho selecionado, ou None
+    status: str  # pass declarado / falha / falha fraca / inconclusivo / ausente / não avaliado
+
+
+@dataclass
+class AuthHeader:
+    """Um cabeçalho Authentication-Results tal como declarado (posição 1 = topo)."""
+
+    position: int
+    authserv_id: str
+    declared: dict[str, list[str]]
+    selected: bool = False
 
 
 @dataclass
 class Authentication:
-    authserv_id: str  # servidor que declarou os resultados; "" se não houver cabeçalho
-    headers_found: int
+    requested_authserv_id: str | None  # informado pelo analista via --authserv-id
+    authserv_id: str  # authserv-id do cabeçalho selecionado; "" se nenhum foi selecionado
+    headers: list[AuthHeader]
     results: dict[str, AuthResult]
+    duplicates_of_selected: int = 0  # outros cabeçalhos com o mesmo authserv-id
+
+    @property
+    def headers_found(self) -> int:
+        return len(self.headers)
+
+    @property
+    def selected(self) -> bool:
+        return bool(self.authserv_id)
 
 
 @dataclass
@@ -294,27 +318,47 @@ def _parse_authentication_results(value: str) -> tuple[str, dict[str, list[str]]
 
 
 def parse_authentication(msg: EmailMessage, trusted_authserv_id: str | None = None) -> Authentication:
-    """Lê os resultados SPF/DKIM/DMARC declarados pelo servidor receptor.
+    """Lê os cabeçalhos Authentication-Results e seleciona, se pedido, o de um authserv-id.
 
-    Cabeçalhos Authentication-Results podem ser forjados pelo remetente. Por isso
-    usa-se apenas o cabeçalho mais recente (topo) ou, se informado, o primeiro
-    emitido pelo `trusted_authserv_id`. Os resultados não são revalidados aqui.
+    O RFC 8601 alerta que esses cabeçalhos podem ser inseridos por qualquer
+    participante do envio, inclusive o remetente, e que o consumidor precisa saber
+    quais serviços de autenticação são confiáveis. A ferramenta não consegue
+    estabelecer isso sozinha. A posição do cabeçalho não prova sua origem.
+
+    - Sem `trusted_authserv_id`: todos os cabeçalhos são listados como declarados,
+      nenhum é selecionado e os mecanismos ficam "não avaliado".
+    - Com `trusted_authserv_id`: é selecionado o cabeçalho mais alto com esse
+      authserv-id. A confiança nesse serviço é decisão do analista, com base externa.
+
+    Em nenhum caso SPF/DKIM/DMARC são revalidados aqui.
     """
-    values = _all_headers(msg, "Authentication-Results")
-    chosen: tuple[str, dict[str, list[str]]] = ("", {})
-    for value in values:
-        parsed = _parse_authentication_results(value)
-        if trusted_authserv_id is None or parsed[0] == trusted_authserv_id.lower():
-            chosen = parsed
-            break
-    authserv_id, raw = chosen
+    headers = []
+    for position, value in enumerate(_all_headers(msg, "Authentication-Results"), start=1):
+        authserv_id, declared = _parse_authentication_results(value)
+        headers.append(AuthHeader(position, authserv_id, declared))
+
+    wanted = trusted_authserv_id.strip().lower() if trusted_authserv_id else None
+    matching = [h for h in headers if wanted and h.authserv_id == wanted]
+    chosen = matching[0] if matching else None
+    if chosen:
+        chosen.selected = True
+
     results = {}
     for mech in AUTH_MECHANISMS:
-        found = raw.get(mech, [])
-        # Várias assinaturas DKIM: basta uma válida para o resultado agregado ser "pass".
+        if chosen is None:
+            results[mech] = AuthResult(mech, None, NOT_EVALUATED)
+            continue
+        found = chosen.declared.get(mech, [])
+        # Várias assinaturas DKIM: basta uma declarada como "pass" para o agregado ser "pass".
         result = "pass" if "pass" in found else (found[0] if found else None)
         results[mech] = AuthResult(mech, result, AUTH_STATUS.get(result, "inconclusivo"))
-    return Authentication(authserv_id=authserv_id, headers_found=len(values), results=results)
+    return Authentication(
+        requested_authserv_id=wanted,
+        authserv_id=chosen.authserv_id if chosen else "",
+        headers=headers,
+        results=results,
+        duplicates_of_selected=max(len(matching) - 1, 0),
+    )
 
 
 def _decoded_text(part: EmailMessage) -> str:
@@ -387,10 +431,28 @@ def _body_text(msg: EmailMessage) -> str:
 
 
 def _auth_indicators(auth: Authentication) -> list[Indicator]:
-    found = []
-    source = f"declarado por {auth.authserv_id}" if auth.authserv_id else ""
-    if auth.headers_found == 0:
+    """Só resultados do cabeçalho selecionado pelo analista pontuam. "pass" nunca reduz
+    a pontuação: um resultado declarado como aprovado não torna o e-mail legítimo."""
+    ids = sorted({h.authserv_id or "(vazio)" for h in auth.headers})
+    if not auth.headers:
         return [Indicator("info", "Sem cabeçalho Authentication-Results: SPF/DKIM/DMARC não avaliados")]
+    if auth.requested_authserv_id is None:
+        return [Indicator("info", f"{len(auth.headers)} Authentication-Results presente(s) (authserv-id: "
+                                  f"{', '.join(ids)}), nenhum selecionado como confiável: resultados "
+                                  "apenas listados, não pontuados (use --authserv-id)")]
+    if not auth.selected:
+        return [Indicator("info", f"Nenhum Authentication-Results com o authserv-id selecionado "
+                                  f"({auth.requested_authserv_id}); encontrados: {', '.join(ids)}")]
+
+    found = []
+    source = f"declarado no Authentication-Results selecionado, authserv-id {auth.authserv_id}"
+    others = sorted({h.authserv_id or "(vazio)" for h in auth.headers if h.authserv_id != auth.authserv_id})
+    if others:
+        found.append(Indicator("info", f"Authentication-Results de outro(s) authserv-id ignorado(s): {', '.join(others)}"))
+    if auth.duplicates_of_selected:
+        found.append(Indicator("info", f"{auth.duplicates_of_selected} cabeçalho(s) adicional(is) com o mesmo "
+                                       "authserv-id; usado o mais alto. Possível falsificação ou falta de "
+                                       "remoção pelo servidor de borda"))
     for mech, res in auth.results.items():
         name = mech.upper()
         if res.status == "falha":
@@ -402,7 +464,7 @@ def _auth_indicators(auth: Authentication) -> list[Indicator]:
         elif res.status == "inconclusivo":
             found.append(Indicator("info", f"{name} = {res.result}: resultado inconclusivo ({source})"))
         elif res.status == "ausente":
-            detail = f"= {res.result}" if res.result else "sem resultado registrado"
+            detail = f"= {res.result}" if res.result else "sem resultado declarado"
             found.append(Indicator("info", f"{name} {detail}: ausência não é prova de fraude"))
     return found
 
@@ -415,16 +477,12 @@ def find_indicators(analysis: EmailAnalysis, msg: EmailMessage) -> list[Indicato
     from_reg = registrable_domain(from_domain) if from_domain else ""
     reply_domain = _domain(h.get("Reply-To", ""))
     return_domain = _domain(h.get("Return-Path", ""))
-    # Com DMARC aprovado o domínio do From foi autenticado pelo receptor; divergências
-    # de Reply-To/Return-Path passam a ser comuns em envios legítimos (helpdesk, ESPs).
-    dmarc_pass = analysis.authentication.results["dmarc"].status == "aprovado"
+    # Resultados declarados de autenticação não alteram a severidade destes indicadores.
     if reply_domain and from_reg and registrable_domain(reply_domain) != from_reg:
-        found.append(Indicator("baixa" if dmarc_pass else "média",
-                               f"Reply-To ({reply_domain}) difere do domínio do From ({from_domain})"))
+        found.append(Indicator("média", f"Reply-To ({reply_domain}) difere do domínio do From ({from_domain})"))
     if return_domain and from_reg and registrable_domain(return_domain) != from_reg:
-        found.append(Indicator("info" if dmarc_pass else "baixa",
-                               f"Return-Path ({return_domain}) difere do From ({from_domain}); "
-                               "comum em serviços legítimos de envio em massa"))
+        found.append(Indicator("info", f"Return-Path ({return_domain}) difere do From ({from_domain}); "
+                                       "comum em serviços legítimos de envio em massa"))
 
     for link in analysis.links:
         host = _host(link.url)
@@ -447,7 +505,7 @@ def find_indicators(analysis: EmailAnalysis, msg: EmailMessage) -> list[Indicato
 
     for att in analysis.attachments:
         name = att.filename.lower()
-        if "‮" in name or "‭" in name:
+        if any(ch in BIDI_CONTROLS for ch in name):
             found.append(Indicator("alta", "Nome de anexo com caractere de controle bidirecional (disfarce de extensão)"))
         suffixes = [s for s in Path(name.replace("/", "_")).suffixes if 1 < len(s) <= 6]
         ext = suffixes[-1] if suffixes else ""

@@ -1,13 +1,12 @@
 """Interface de linha de comando do Digital Evidence Lab."""
 
 import argparse
-import json
 import sys
 from pathlib import Path
 
 from evidencelab.case import CUSTODY_FILE, EVIDENCE_DIR, IntegrityError, run_case, verify
 from evidencelab.custody import ChainOfCustody
-from evidencelab.report import SCOPE_NOTE, render_panel, write_reports
+from evidencelab.report import INTEGRITY_FAIL, INTEGRITY_OK, SCOPE_NOTE, render_panel, write_reports
 from evidencelab.sanitize import safe
 
 
@@ -45,8 +44,9 @@ def cmd_verify(args: argparse.Namespace) -> int:
     chain_ok = custody.verify_chain()
     initial = custody.initial_hash()
     # O nome vem do JSON: só o componente final é usado, evitando caminhos fora do caso.
-    evidence = case_dir / EVIDENCE_DIR / Path(custody.evidence).name
-    hash_ok = bool(initial) and verify(evidence, initial)
+    name = Path(custody.evidence).name
+    evidence = case_dir / EVIDENCE_DIR / name
+    hash_ok = name not in {"", ".", ".."} and bool(initial) and verify(evidence, initial)
 
     if args.examiner:
         custody.examiner = args.examiner
@@ -61,7 +61,7 @@ def cmd_verify(args: argparse.Namespace) -> int:
     print(f"SHA-256 inicial: {safe(initial or '(não registrado)')}")
     print(f"Registro de custódia (encadeamento): {'ÍNTEGRO' if chain_ok else 'INCONSISTENTE'}")
     print("INTEGRIDADE DA CÓPIA DE TRABALHO")
-    print("● VERIFICADA (hash inalterado)" if hash_ok else "● FALHA")
+    print(INTEGRITY_OK if hash_ok else INTEGRITY_FAIL)
     print(f"\nNota: {SCOPE_NOTE}")
     return 0 if (hash_ok and chain_ok) else 1
 
@@ -78,8 +78,10 @@ def build_parser() -> argparse.ArgumentParser:
     analyze.add_argument("--examiner", help="Nome do examinador (padrão: usuário do sistema)")
     analyze.add_argument(
         "--authserv-id",
-        help="authserv-id confiável do seu servidor de e-mail; só os Authentication-Results "
-        "emitidos por ele são considerados (padrão: o cabeçalho mais recente)",
+        help="authserv-id de um serviço de autenticação que você tem fundamento externo para "
+        "considerar confiável (ex.: o servidor de borda da sua organização). Só o "
+        "Authentication-Results mais alto com esse authserv-id é usado e pontuado. Sem esta "
+        "opção, os cabeçalhos são apenas listados como declarados e não pontuam.",
     )
     analyze.set_defaults(func=cmd_analyze)
 
