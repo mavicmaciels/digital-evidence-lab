@@ -1,5 +1,8 @@
 # Digital Evidence Lab
 
+[![Tests](https://github.com/mavicmaciels/digital-evidence-lab/actions/workflows/tests.yml/badge.svg)](https://github.com/mavicmaciels/digital-evidence-lab/actions/workflows/tests.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 **Triagem forense de e-mails suspeitos (`.eml`) com preservação de evidência e cadeia de custódia.**
 
 Ferramenta de linha de comando em Python (somente biblioteca padrão) que reproduz, em
@@ -136,6 +139,9 @@ digital-evidence-lab/
 │   └── email_suspeito.eml # phishing fictício (domínios .example, IPs RFC 5737)
 ├── tests/
 │   └── test_evidencelab.py
+├── .github/workflows/
+│   └── tests.yml          # CI: unittest em Python 3.10–3.13
+├── LICENSE                # MIT
 └── README.md
 
 casos/<nome>/              # gerado em tempo de execução (ignorado pelo git)
@@ -234,6 +240,8 @@ explicitamente os limites de cada conclusão.
   usuário com privilégios.
 
 ## Licença e dados
+
+Código distribuído sob a **licença MIT**. Veja o arquivo [`LICENSE`](LICENSE).
 
 O arquivo `samples/email_suspeito.eml` é **inteiramente fictício**. Usa domínios
 reservados `.example`, IPs de documentação (RFC 5737) e um "executável" de poucos bytes
