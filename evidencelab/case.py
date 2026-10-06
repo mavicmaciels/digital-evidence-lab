@@ -13,6 +13,7 @@ from evidencelab.timeline import TimelineEntry, build_timeline
 
 CUSTODY_FILE = "cadeia_custodia.json"
 EVIDENCE_DIR = "evidencia"
+INTAKE_ACTION = "Recebido pela interface"
 READ_ONLY = stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH
 
 
@@ -71,7 +72,14 @@ def run_case(
     case_dir: Path,
     examiner: str | None = None,
     trusted_authserv_id: str | None = None,
+    intake_note: str | None = None,
+    intake_sha256: str = "",
 ) -> CaseResult:
+    """Executa o fluxo completo do caso.
+
+    `intake_note` (opcional) registra, antes da coleta, como a evidência chegou ao
+    caso (ex.: recebida pela interface local). Sem ele, o comportamento é o do CLI.
+    """
     if source.stat().st_size > MAX_EML_BYTES:
         raise EmailTooLargeError(f"Arquivo excede o limite de {MAX_EML_BYTES} bytes")
     # Um caso = uma evidência: nunca sobrescrever cópia ou registro de custódia existentes.
@@ -83,6 +91,8 @@ def run_case(
     custody = ChainOfCustody(evidence=source.name, path=case_dir / CUSTODY_FILE)
     if examiner:
         custody.examiner = examiner
+    if intake_note:
+        custody.record(INTAKE_ACTION, intake_note, intake_sha256)
 
     evidence, digest = acquire(source, case_dir, custody)
     steps = ["Arquivo adquirido (cópia somente leitura)", "SHA-256 calculado"]
