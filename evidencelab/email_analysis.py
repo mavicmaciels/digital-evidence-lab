@@ -1,21 +1,29 @@
-"""Extração de metadados e indicadores de um e-mail (.eml)."""
+"""Extração de metadados e indicadores heurísticos de um e-mail (.eml).
+
+Segurança: este módulo apenas lê e interpreta bytes. Nenhum anexo é gravado em
+disco ou executado e nenhuma URL é acessada; links são tratados como texto.
+"""
 
 import ipaddress
 import re
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from email import policy
 from email.message import EmailMessage
 from email.parser import BytesParser
 from email.utils import getaddresses, parseaddr, parsedate_to_datetime
 from html.parser import HTMLParser
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urlsplit
 
 from evidencelab.hashing import sha256_bytes
+from evidencelab.sanitize import defang
+
+MAX_EML_BYTES = 50 * 1024 * 1024
 
 KEY_HEADERS = (
     "From",
+    "Sender",
     "Reply-To",
     "Return-Path",
     "To",
@@ -30,20 +38,52 @@ KEY_HEADERS = (
 
 EXECUTABLE_EXTENSIONS = {
     ".exe", ".scr", ".bat", ".cmd", ".com", ".pif", ".js", ".jse", ".vbs", ".vbe",
-    ".wsf", ".hta", ".msi", ".ps1", ".jar", ".lnk", ".iso", ".img", ".dll",
+    ".wsf", ".wsh", ".hta", ".msi", ".ps1", ".jar", ".lnk", ".dll", ".cpl",
 }
-URGENCY_TERMS = (
-    "urgente", "imediatamente", "bloquead", "suspens", "24 horas", "24h",
-    "confirme seus dados", "verifique sua conta", "senha", "urgent", "immediately",
-    "suspended", "verify your account", "password",
+CONTAINER_EXTENSIONS = {".iso", ".img", ".vhd", ".vhdx"}
+MACRO_EXTENSIONS = {".docm", ".xlsm", ".pptm", ".dotm", ".xlam"}
+URGENCY_PATTERNS = (
+    r"\burgente\b", r"\bimediatamente\b", r"\bbloquead[ao]s?\b", r"\bsuspens[ao]s?\b",
+    r"\b24\s*(?:h|horas)\b", r"confirme seus dados", r"verifique sua conta",
+    r"\burgent\b", r"\bimmediately\b", r"\bsuspended\b", r"verify your account",
 )
+URGENCY_RE = [re.compile(p, re.IGNORECASE) for p in URGENCY_PATTERNS]
+
+# Sufixos públicos de dois rótulos mais comuns. Não substitui a Public Suffix List.
+MULTI_LABEL_SUFFIXES = {
+    "com.br", "net.br", "org.br", "gov.br", "edu.br", "jus.br", "mil.br", "art.br",
+    "co.uk", "org.uk", "gov.uk", "ac.uk", "com.au", "net.au", "org.au", "co.jp",
+    "com.ar", "com.mx", "co.nz", "com.pt", "co.za", "com.cn", "com.tr", "co.in",
+}
+
 URL_RE = re.compile(r"https?://[^\s\"'<>]+", re.IGNORECASE)
 RECEIVED_RE = re.compile(
-    r"^\s*(?:from\s+(?P<from>.+?))?\s*by\s+(?P<by>\S+)(?:\s+with\s+(?P<with>\S+))?",
+    r"^\s*(?:from\s+(?P<from>.+?))?\s*\bby\s+(?P<by>\S+)(?:.*?\bwith\s+(?P<with>\S+))?",
     re.IGNORECASE | re.DOTALL,
 )
-IP_RE = re.compile(r"\[(\d{1,3}(?:\.\d{1,3}){3})\]")
-AUTH_RE = re.compile(r"\b(spf|dkim|dmarc)\s*=\s*(\w+)", re.IGNORECASE)
+IPV4_RE = re.compile(r"\[(\d{1,3}(?:\.\d{1,3}){3})\]")
+IPV6_RE = re.compile(r"\[(?:IPv6:)?([0-9a-f:.]*:[0-9a-f:.]*)\]", re.IGNORECASE)
+RESINFO_RE = re.compile(r"^([a-z0-9_-]+)(?:/\d+)?\s*=\s*([a-z]+)", re.IGNORECASE)
+
+AUTH_MECHANISMS = ("spf", "dkim", "dmarc")
+# Classificação dos resultados (RFC 8601 / RFC 7208 / RFC 6376 / RFC 7489).
+AUTH_STATUS = {
+    None: "ausente",  # nenhum resultado registrado para o mecanismo
+    "none": "ausente",  # sem registro SPF / mensagem sem assinatura DKIM / sem política DMARC
+    "pass": "aprovado",
+    "fail": "falha",
+    "softfail": "falha fraca",
+    "neutral": "inconclusivo",
+    "policy": "inconclusivo",
+    "temperror": "inconclusivo",
+    "permerror": "inconclusivo",
+}
+
+SEVERITY_WEIGHT = {"alta": 3, "média": 2, "baixa": 1, "info": 0}
+
+
+class EmailTooLargeError(ValueError):
+    pass
 
 
 @dataclass
@@ -53,7 +93,22 @@ class ReceivedHop:
     by_host: str
     protocol: str
     ip: str
-    timestamp: datetime | None
+    raw_date: str
+    timestamp: datetime | None  # sempre em UTC
+
+
+@dataclass
+class AuthResult:
+    mechanism: str
+    result: str | None  # valor bruto informado pelo servidor, ou None se ausente
+    status: str  # aprovado / falha / falha fraca / inconclusivo / ausente
+
+
+@dataclass
+class Authentication:
+    authserv_id: str  # servidor que declarou os resultados; "" se não houver cabeçalho
+    headers_found: int
+    results: dict[str, AuthResult]
 
 
 @dataclass
@@ -73,7 +128,7 @@ class Attachment:
 
 @dataclass
 class Indicator:
-    severity: str  # "alta", "média", "baixa"
+    severity: str  # "alta", "média", "baixa" ou "info" (informativo, não pontua)
     description: str
 
 
@@ -82,24 +137,29 @@ class EmailAnalysis:
     headers: dict[str, str]
     date: datetime | None
     hops: list[ReceivedHop]
-    authentication: dict[str, str]
+    authentication: Authentication
     links: list[Link]
     attachments: list[Attachment]
+    parse_defects: list[str] = field(default_factory=list)
     indicators: list[Indicator] = field(default_factory=list)
 
     @property
-    def risk_level(self) -> str:
-        high = sum(1 for i in self.indicators if i.severity == "alta")
-        if high >= 2:
+    def score(self) -> int:
+        return sum(SEVERITY_WEIGHT[i.severity] for i in self.indicators)
+
+    @property
+    def suspicion_level(self) -> str:
+        """Nível heurístico de suspeita. Não é prova de fraude nem de legitimidade."""
+        if self.score >= 6:
             return "ALTO"
-        if high or len(self.indicators) >= 2:
+        if self.score >= 3:
             return "MÉDIO"
         return "BAIXO"
 
 
 class _AnchorParser(HTMLParser):
     def __init__(self) -> None:
-        super().__init__()
+        super().__init__(convert_charrefs=True)
         self.links: list[Link] = []
         self._href: str | None = None
         self._text: list[str] = []
@@ -116,31 +176,54 @@ class _AnchorParser(HTMLParser):
     def handle_endtag(self, tag):
         if tag == "a" and self._href is not None:
             text = " ".join("".join(self._text).split())
-            self.links.append(Link(url=self._href, text=text, source="html"))
+            self.links.append(Link(url=self._href.strip(), text=text, source="html"))
             self._href = None
 
 
 def load_message(path: Path) -> EmailMessage:
+    size = path.stat().st_size
+    if size > MAX_EML_BYTES:
+        raise EmailTooLargeError(f"Arquivo com {size} bytes excede o limite de {MAX_EML_BYTES}")
     with open(path, "rb") as fh:
         return BytesParser(policy=policy.default).parse(fh)
 
 
-def _parse_date(value: str | None) -> datetime | None:
+def parse_date(value: str | None) -> datetime | None:
+    """Converte uma data RFC 5322 para UTC. Datas sem fuso (-0000) são tratadas como UTC."""
     if not value:
         return None
     try:
-        return parsedate_to_datetime(value)
-    except (TypeError, ValueError):
+        dt = parsedate_to_datetime(value)
+    except (TypeError, ValueError, IndexError):
         return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
+def _header(msg: EmailMessage, name: str) -> str | None:
+    try:
+        value = msg[name]
+    except Exception:  # cabeçalhos malformados não devem interromper a análise
+        values = [v for k, v in msg.raw_items() if k.lower() == name.lower()]
+        return str(values[0]) if values else None
+    return None if value is None else str(value)
+
+
+def _all_headers(msg: EmailMessage, name: str) -> list[str]:
+    return [str(v) for k, v in msg.raw_items() if k.lower() == name.lower()]
 
 
 def _domain(address: str) -> str:
     _, addr = parseaddr(address or "")
-    return addr.rpartition("@")[2].lower().strip(">")
+    return addr.rpartition("@")[2].lower().strip("<> .")
 
 
 def _host(url: str) -> str:
-    return (urlparse(url).hostname or "").lower()
+    try:
+        return (urlsplit(url).hostname or "").lower().rstrip(".")
+    except ValueError:
+        return ""
 
 
 def _is_ip(host: str) -> bool:
@@ -151,27 +234,30 @@ def _is_ip(host: str) -> bool:
         return False
 
 
-def _registrable(domain: str) -> str:
-    """Aproximação simples do domínio registrável (últimos dois rótulos)."""
-    parts = domain.split(".")
-    return ".".join(parts[-2:]) if len(parts) >= 2 else domain
+def registrable_domain(domain: str) -> str:
+    """Aproximação do domínio registrável (eTLD+1) sem a Public Suffix List completa."""
+    parts = [p for p in domain.lower().strip(".").split(".") if p]
+    if len(parts) >= 3 and ".".join(parts[-2:]) in MULTI_LABEL_SUFFIXES:
+        return ".".join(parts[-3:])
+    return ".".join(parts[-2:])
 
 
 def parse_received(values: list[str]) -> list[ReceivedHop]:
-    """Converte os cabeçalhos Received (ordem do topo = mais recente) em saltos."""
+    """Converte os cabeçalhos Received (topo = mais recente) em saltos cronológicos."""
     hops = []
     for index, raw in enumerate(reversed(values), start=1):
         flat = " ".join(str(raw).split())
-        route, _, date_part = flat.rpartition(";")
-        if not route:
+        route, sep, date_part = flat.rpartition(";")
+        if not sep:
             route, date_part = flat, ""
+        from_host = by_host = protocol = from_clause = ""
         match = RECEIVED_RE.search(route)
-        from_host = by_host = protocol = ""
         if match:
-            from_host = (match.group("from") or "").split(" ")[0]
+            from_clause = match.group("from") or ""
+            from_host = from_clause.split(" ")[0]
             by_host = match.group("by") or ""
             protocol = match.group("with") or ""
-        ip = IP_RE.search(route)
+        ip = IPV4_RE.search(from_clause) or IPV6_RE.search(from_clause)
         hops.append(
             ReceivedHop(
                 index=index,
@@ -179,33 +265,90 @@ def parse_received(values: list[str]) -> list[ReceivedHop]:
                 by_host=by_host,
                 protocol=protocol,
                 ip=ip.group(1) if ip else "",
-                timestamp=_parse_date(date_part.strip()),
+                raw_date=date_part.strip(),
+                timestamp=parse_date(date_part.strip()),
             )
         )
     return hops
 
 
+def _strip_comments(value: str) -> str:
+    previous = None
+    while previous != value:
+        previous = value
+        value = re.sub(r"\([^()]*\)", " ", value)
+    return value
+
+
+def _parse_authentication_results(value: str) -> tuple[str, dict[str, list[str]]]:
+    """Interpreta um cabeçalho Authentication-Results (RFC 8601), ignorando comentários."""
+    clean = " ".join(_strip_comments(value).split())
+    parts = [p.strip() for p in clean.split(";")]
+    authserv_id = parts[0].split(" ")[0].lower() if parts and parts[0] else ""
+    results: dict[str, list[str]] = {}
+    for resinfo in parts[1:]:
+        match = RESINFO_RE.match(resinfo)
+        if match and match.group(1).lower() in AUTH_MECHANISMS:
+            results.setdefault(match.group(1).lower(), []).append(match.group(2).lower())
+    return authserv_id, results
+
+
+def parse_authentication(msg: EmailMessage, trusted_authserv_id: str | None = None) -> Authentication:
+    """Lê os resultados SPF/DKIM/DMARC declarados pelo servidor receptor.
+
+    Cabeçalhos Authentication-Results podem ser forjados pelo remetente. Por isso
+    usa-se apenas o cabeçalho mais recente (topo) ou, se informado, o primeiro
+    emitido pelo `trusted_authserv_id`. Os resultados não são revalidados aqui.
+    """
+    values = _all_headers(msg, "Authentication-Results")
+    chosen: tuple[str, dict[str, list[str]]] = ("", {})
+    for value in values:
+        parsed = _parse_authentication_results(value)
+        if trusted_authserv_id is None or parsed[0] == trusted_authserv_id.lower():
+            chosen = parsed
+            break
+    authserv_id, raw = chosen
+    results = {}
+    for mech in AUTH_MECHANISMS:
+        found = raw.get(mech, [])
+        # Várias assinaturas DKIM: basta uma válida para o resultado agregado ser "pass".
+        result = "pass" if "pass" in found else (found[0] if found else None)
+        results[mech] = AuthResult(mech, result, AUTH_STATUS.get(result, "inconclusivo"))
+    return Authentication(authserv_id=authserv_id, headers_found=len(values), results=results)
+
+
 def _decoded_text(part: EmailMessage) -> str:
     try:
-        return part.get_content()
-    except (LookupError, UnicodeDecodeError):
+        content = part.get_content()
+        return content if isinstance(content, str) else ""
+    except Exception:  # charset desconhecido ou conteúdo malformado
         payload = part.get_payload(decode=True) or b""
         return payload.decode("utf-8", errors="replace")
+
+
+def _is_attachment(part: EmailMessage) -> bool:
+    if part.is_multipart() or part.get_content_type() == "message/rfc822":
+        return False
+    return part.get_content_disposition() == "attachment" or bool(part.get_filename())
 
 
 def extract_links(msg: EmailMessage) -> list[Link]:
     links: list[Link] = []
     seen: set[tuple[str, str]] = set()
     for part in msg.walk():
-        if part.is_multipart() or part.get_content_disposition() == "attachment":
+        if part.is_multipart() or _is_attachment(part):
             continue
         ctype = part.get_content_type()
         if ctype == "text/html":
             parser = _AnchorParser()
-            parser.feed(_decoded_text(part))
+            try:
+                parser.feed(_decoded_text(part))
+                parser.close()
+            except Exception:
+                pass
             found = parser.links
         elif ctype == "text/plain":
-            found = [Link(url=u.rstrip(".,)")) for u in URL_RE.findall(_decoded_text(part))]
+            found = [Link(url=u.rstrip(".,;)")) for u in URL_RE.findall(_decoded_text(part))]
         else:
             continue
         for link in found:
@@ -217,8 +360,12 @@ def extract_links(msg: EmailMessage) -> list[Link]:
 
 
 def extract_attachments(msg: EmailMessage) -> list[Attachment]:
+    """Lista anexos (inclusive dentro de mensagens encaminhadas) e calcula o SHA-256
+    do conteúdo decodificado. O conteúdo permanece em memória e nunca é gravado."""
     attachments = []
-    for part in msg.iter_attachments():
+    for part in msg.walk():
+        if not _is_attachment(part):
+            continue
         payload = part.get_payload(decode=True) or b""
         attachments.append(
             Attachment(
@@ -232,59 +379,94 @@ def extract_attachments(msg: EmailMessage) -> list[Attachment]:
 
 
 def _body_text(msg: EmailMessage) -> str:
-    chunks = [str(msg.get("Subject", ""))]
+    chunks = [_header(msg, "Subject") or ""]
     for part in msg.walk():
-        if part.get_content_maintype() == "text" and part.get_content_disposition() != "attachment":
+        if part.get_content_maintype() == "text" and not _is_attachment(part):
             chunks.append(_decoded_text(part))
-    return "\n".join(chunks).lower()
+    return "\n".join(chunks)
+
+
+def _auth_indicators(auth: Authentication) -> list[Indicator]:
+    found = []
+    source = f"declarado por {auth.authserv_id}" if auth.authserv_id else ""
+    if auth.headers_found == 0:
+        return [Indicator("info", "Sem cabeçalho Authentication-Results: SPF/DKIM/DMARC não avaliados")]
+    for mech, res in auth.results.items():
+        name = mech.upper()
+        if res.status == "falha":
+            sev = "alta" if mech == "dmarc" else "média"
+            found.append(Indicator(sev, f"{name} = fail ({source}); indício, não prova: "
+                                        "encaminhamentos e listas podem causar falha legítima"))
+        elif res.status == "falha fraca":
+            found.append(Indicator("baixa", f"{name} = softfail ({source})"))
+        elif res.status == "inconclusivo":
+            found.append(Indicator("info", f"{name} = {res.result}: resultado inconclusivo ({source})"))
+        elif res.status == "ausente":
+            detail = f"= {res.result}" if res.result else "sem resultado registrado"
+            found.append(Indicator("info", f"{name} {detail}: ausência não é prova de fraude"))
+    return found
 
 
 def find_indicators(analysis: EmailAnalysis, msg: EmailMessage) -> list[Indicator]:
-    found: list[Indicator] = []
+    found = _auth_indicators(analysis.authentication)
     h = analysis.headers
 
-    for mech in ("spf", "dkim", "dmarc"):
-        result = analysis.authentication.get(mech)
-        if result in {"fail", "softfail", "none", "permerror"}:
-            sev = "alta" if result == "fail" else "média"
-            found.append(Indicator(sev, f"{mech.upper()} = {result}"))
-
     from_domain = _domain(h.get("From", ""))
+    from_reg = registrable_domain(from_domain) if from_domain else ""
     reply_domain = _domain(h.get("Reply-To", ""))
     return_domain = _domain(h.get("Return-Path", ""))
-    if reply_domain and from_domain and _registrable(reply_domain) != _registrable(from_domain):
-        found.append(Indicator("alta", f"Reply-To ({reply_domain}) difere do remetente ({from_domain})"))
-    if return_domain and from_domain and _registrable(return_domain) != _registrable(from_domain):
-        found.append(Indicator("média", f"Return-Path ({return_domain}) difere do remetente ({from_domain})"))
+    # Com DMARC aprovado o domínio do From foi autenticado pelo receptor; divergências
+    # de Reply-To/Return-Path passam a ser comuns em envios legítimos (helpdesk, ESPs).
+    dmarc_pass = analysis.authentication.results["dmarc"].status == "aprovado"
+    if reply_domain and from_reg and registrable_domain(reply_domain) != from_reg:
+        found.append(Indicator("baixa" if dmarc_pass else "média",
+                               f"Reply-To ({reply_domain}) difere do domínio do From ({from_domain})"))
+    if return_domain and from_reg and registrable_domain(return_domain) != from_reg:
+        found.append(Indicator("info" if dmarc_pass else "baixa",
+                               f"Return-Path ({return_domain}) difere do From ({from_domain}); "
+                               "comum em serviços legítimos de envio em massa"))
 
     for link in analysis.links:
         host = _host(link.url)
-        if _is_ip(host):
-            found.append(Indicator("alta", f"Link aponta para endereço IP: {link.url}"))
+        scheme = link.url.split(":", 1)[0].lower()
+        if scheme in {"javascript", "data", "vbscript"}:
+            found.append(Indicator("alta", f"Link com esquema perigoso: {scheme}:"))
+            continue
+        if not host:
+            continue
         shown = URL_RE.findall(link.text)
-        if shown and _host(shown[0]) and _host(shown[0]) != host:
-            found.append(Indicator("alta", f"Texto do link exibe {_host(shown[0])}, mas aponta para {host}"))
-        if from_domain and host and not _is_ip(host) and host.startswith(_registrable(from_domain) + "."):
-            found.append(Indicator("alta", f"Domínio do remetente usado como subdomínio enganoso: {host}"))
+        shown_host = _host(shown[0]) if shown else ""
+        if _is_ip(host):
+            found.append(Indicator("alta", f"Link aponta para endereço IP: {defang(link.url)}"))
+        elif from_reg and host.startswith(from_reg + ".") and registrable_domain(host) != from_reg:
+            found.append(Indicator("alta", f"Domínio do remetente usado como subdomínio de outro domínio: {defang(host)}"))
+        if shown_host and registrable_domain(shown_host) != registrable_domain(host):
+            found.append(Indicator("média", f"Texto do link exibe {defang(shown_host)}, mas o destino é {defang(host)}"))
+        if any(label.startswith("xn--") for label in host.split(".")):
+            found.append(Indicator("média", f"Domínio internacionalizado (punycode), possível homógrafo: {defang(host)}"))
 
     for att in analysis.attachments:
         name = att.filename.lower()
-        suffixes = Path(name).suffixes
-        if suffixes and suffixes[-1] in EXECUTABLE_EXTENSIONS:
-            found.append(Indicator("alta", f"Anexo executável: {att.filename}"))
-            if len(suffixes) > 1:
-                found.append(Indicator("alta", f"Extensão dupla no anexo: {att.filename}"))
+        if "‮" in name or "‭" in name:
+            found.append(Indicator("alta", "Nome de anexo com caractere de controle bidirecional (disfarce de extensão)"))
+        suffixes = [s for s in Path(name.replace("/", "_")).suffixes if 1 < len(s) <= 6]
+        ext = suffixes[-1] if suffixes else ""
+        double = " com extensão dupla" if len(suffixes) > 1 else ""
+        if ext in EXECUTABLE_EXTENSIONS:
+            found.append(Indicator("alta", f"Anexo executável{double}: {att.filename}"))
+        elif ext in CONTAINER_EXTENSIONS:
+            found.append(Indicator("média", f"Anexo em imagem de disco{double}: {att.filename}"))
+        elif ext in MACRO_EXTENSIONS:
+            found.append(Indicator("média", f"Anexo Office com macros{double}: {att.filename}"))
 
     body = _body_text(msg)
-    terms = sorted({t for t in URGENCY_TERMS if t in body})
-    if terms:
-        found.append(Indicator("média", "Linguagem de urgência/pressão: " + ", ".join(terms)))
+    terms = sorted({m.group(0).lower() for rx in URGENCY_RE for m in [rx.search(body)] if m})
+    if len(terms) >= 2:
+        found.append(Indicator("baixa", "Linguagem de urgência/pressão: " + ", ".join(terms)))
 
-    date = analysis.date
-    if date and analysis.hops:
-        first = next((hop.timestamp for hop in analysis.hops if hop.timestamp), None)
-        if first and abs((first - date).total_seconds()) > 3600:
-            found.append(Indicator("baixa", "Diferença > 1h entre Date e o primeiro salto Received"))
+    first = next((hop.timestamp for hop in analysis.hops if hop.timestamp), None)
+    if analysis.date and first and abs((first - analysis.date).total_seconds()) > 3600:
+        found.append(Indicator("baixa", "Diferença > 1h entre Date e o salto Received mais antigo"))
 
     if not h.get("Message-ID"):
         found.append(Indicator("baixa", "Cabeçalho Message-ID ausente"))
@@ -292,24 +474,25 @@ def find_indicators(analysis: EmailAnalysis, msg: EmailMessage) -> list[Indicato
     return found
 
 
-def analyze_email(path: Path) -> EmailAnalysis:
+def analyze_email(path: Path, trusted_authserv_id: str | None = None) -> EmailAnalysis:
     msg = load_message(path)
-    headers = {name: str(msg[name]) for name in KEY_HEADERS if msg[name] is not None}
+    headers = {}
+    for name in KEY_HEADERS:
+        value = _header(msg, name)
+        if value is not None:
+            headers[name] = value
     if "To" in headers:
-        headers["To"] = ", ".join(addr for _, addr in getaddresses([headers["To"]]))
+        headers["To"] = ", ".join(addr for _, addr in getaddresses([headers["To"]]) if addr)
 
-    auth: dict[str, str] = {}
-    for value in msg.get_all("Authentication-Results", []):
-        for mech, result in AUTH_RE.findall(str(value)):
-            auth.setdefault(mech.lower(), result.lower())
-
+    defects = [f"{type(d).__name__}" for part in msg.walk() for d in part.defects]
     analysis = EmailAnalysis(
         headers=headers,
-        date=_parse_date(headers.get("Date")),
-        hops=parse_received([str(v) for v in msg.get_all("Received", [])]),
-        authentication=auth,
+        date=parse_date(headers.get("Date")),
+        hops=parse_received(_all_headers(msg, "Received")),
+        authentication=parse_authentication(msg, trusted_authserv_id),
         links=extract_links(msg),
         attachments=extract_attachments(msg),
+        parse_defects=defects,
     )
     analysis.indicators = find_indicators(analysis, msg)
     return analysis
