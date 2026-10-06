@@ -1,0 +1,66 @@
+Return-Path: <bounce-7731@mailer.promo-entregas.example>
+Received: from mx.vitima.example (mx.vitima.example [198.51.100.10])
+	by mail.vitima.example with ESMTPS id 4Xk2Lm9Pq
+	for <maria@vitima.example>; Mon, 05 Oct 2026 10:14:09 -0300
+Received: from smtp-out.promo-entregas.example (unknown [203.0.113.45])
+	by mx.vitima.example with ESMTP id 9ab37f21
+	for <maria@vitima.example>; Mon, 05 Oct 2026 10:14:05 -0300
+Received: from [10.13.37.2] (helo=desktop-x91)
+	by smtp-out.promo-entregas.example with esmtpa
+	; Mon, 05 Oct 2026 13:13:58 +0000
+Authentication-Results: mx.vitima.example;
+	spf=fail (sender IP is 203.0.113.45) smtp.mailfrom=promo-entregas.example;
+	dkim=none (message not signed);
+	dmarc=fail action=none header.from=banco-seguro.example
+From: "Banco Seguro - Atendimento" <seguranca@banco-seguro.example>
+Reply-To: <suporte.banco@contas-verificacao.example>
+To: <maria@vitima.example>
+Subject: =?UTF-8?Q?URGENTE:_Sua_conta_ser=C3=A1_bloqueada_em_24h?=
+Date: Mon, 05 Oct 2026 13:13:57 +0000
+Message-ID: <20261005131357.4421@desktop-x91>
+X-Mailer: MassMailer Pro 3.1
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="==BOUNDARY_EXT=="
+
+--==BOUNDARY_EXT==
+Content-Type: multipart/alternative; boundary="==BOUNDARY_ALT=="
+
+--==BOUNDARY_ALT==
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
+
+Prezado(a) cliente,
+
+Detectamos atividade suspeita em sua conta. Para evitar o bloqueio,
+confirme seus dados imediatamente em:
+http://banco-seguro.example.contas-verificacao.example/login
+
+Caso não confirme em 24 horas, sua conta será suspensa.
+
+Atenciosamente,
+Equipe de Segurança
+
+--==BOUNDARY_ALT==
+Content-Type: text/html; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
+
+<html><body>
+<p>Prezado(a) cliente,</p>
+<p>Detectamos atividade suspeita em sua conta. Para evitar o bloqueio,
+<a href="http://203.0.113.45/banco/login.php?id=8812">clique aqui e confirme seus dados em https://www.banco-seguro.example/seguranca</a>
+imediatamente.</p>
+<p>Caso não confirme em 24 horas, sua conta será <b>suspensa</b>.</p>
+</body></html>
+
+--==BOUNDARY_ALT==--
+
+--==BOUNDARY_EXT==
+Content-Type: application/octet-stream; name="Comprovante_Bloqueio.pdf.exe"
+Content-Disposition: attachment; filename="Comprovante_Bloqueio.pdf.exe"
+Content-Transfer-Encoding: base64
+
+TVqQAAMAAAAEAAAA//8AALgAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAgAAAAA4fug4AtAnNIbgBTM0hVGhpcyBwcm9ncmFtIGlzIGEgaGFybWxlc3MgdGVzdCBmaXh0
+dXJlLg0KJAAAAAAAAAA=
+
+--==BOUNDARY_EXT==--
