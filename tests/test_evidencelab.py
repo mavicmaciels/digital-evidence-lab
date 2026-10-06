@@ -85,7 +85,7 @@ class HashingTests(TempDirTest):
 
 class SanitizeTests(unittest.TestCase):
     def test_control_and_bidi_characters_escaped(self):
-        self.assertEqual(safe("a\x1b[2Jb‮"), "a\\x1b[2Jb\\u202e")
+        self.assertEqual(safe("a\x1b[2Jb\u202e"), "a\\x1b[2Jb\\u202e")
 
     def test_defang(self):
         self.assertEqual(defang("https://evil.example/x.y"), "hxxps://evil[.]example/x.y")
@@ -112,10 +112,16 @@ class SampleAnalysisTests(unittest.TestCase):
         self.assertEqual(hops[1].raw_date, "Mon, 05 Oct 2026 10:14:05 -0300")
 
     def test_authentication_status(self):
-        r = self.analysis.authentication.results
-        self.assertEqual(self.analysis.authentication.authserv_id, "mx.vitima.example")
+        # Sem --authserv-id: o cabeçalho é listado como declarado, mas não é selecionado.
+        auth = self.analysis.authentication
+        self.assertEqual(auth.authserv_id, "")
+        self.assertEqual(auth.headers[0].declared, {"spf": ["fail"], "dkim": ["none"], "dmarc": ["fail"]})
+        self.assertEqual({r.status for r in auth.results.values()}, {"não avaliado"})
+
+        selected = analyze_email(SAMPLE, "mx.vitima.example").authentication
+        self.assertEqual(selected.authserv_id, "mx.vitima.example")
         self.assertEqual(
-            {k: (v.result, v.status) for k, v in r.items()},
+            {k: (v.result, v.status) for k, v in selected.results.items()},
             {"spf": ("fail", "falha"), "dkim": ("none", "ausente"), "dmarc": ("fail", "falha")},
         )
 
@@ -135,18 +141,24 @@ class SampleAnalysisTests(unittest.TestCase):
 
 
 class AuthenticationTests(TempDirTest):
-    def auth(self, *ar_lines, trusted=None):
-        raw = headers(*ar_lines, "From: a@x.example", "Message-ID: <1@x>")
+    """Authentication-Results é forjável (RFC 8601): só pontua o authserv-id escolhido."""
+
+    def auth(self, *ar_lines, trusted="mx.example", extra=()):
+        raw = headers(*ar_lines, "From: a@x.example", "Message-ID: <1@x>", *extra)
         return analyze_email(self.eml(raw), trusted)
+
+    def scored(self, analysis):
+        return [i for i in analysis.indicators if i.severity != "info"]
 
     def test_absent_header_is_informational_only(self):
         a = self.auth()
-        self.assertEqual({r.status for r in a.authentication.results.values()}, {"ausente"})
+        self.assertEqual({r.status for r in a.authentication.results.values()}, {"não avaliado"})
         self.assertEqual([i.severity for i in a.indicators], ["info"])
         self.assertEqual(a.suspicion_level, "BAIXO")
 
     def test_none_is_absence_not_failure(self):
         a = self.auth("Authentication-Results: mx.example; spf=none; dkim=none; dmarc=none")
+        self.assertEqual({r.status for r in a.authentication.results.values()}, {"ausente"})
         self.assertTrue(all(i.severity == "info" for i in a.indicators))
         self.assertEqual(a.score, 0)
 
@@ -155,32 +167,86 @@ class AuthenticationTests(TempDirTest):
         self.assertEqual({r.status for r in a.authentication.results.values()}, {"inconclusivo"})
         self.assertEqual(a.score, 0)
 
-    def test_failures_are_scored(self):
-        a = self.auth("Authentication-Results: mx.example; spf=softfail; dkim=fail; dmarc=fail")
-        sev = {i.description.split(" ")[0]: i.severity for i in a.indicators}
+    def test_failures_are_scored_only_when_selected(self):
+        line = "Authentication-Results: mx.example; spf=softfail; dkim=fail; dmarc=fail"
+        sev = {i.description.split(" ")[0]: i.severity for i in self.scored(self.auth(line))}
         self.assertEqual(sev, {"SPF": "baixa", "DKIM": "média", "DMARC": "alta"})
+        self.assertEqual(self.scored(self.auth(line, trusted=None)), [])
 
     def test_comments_and_unrelated_keys_ignored(self):
         a = self.auth("Authentication-Results: mx.example; spf=pass (nota: dmarc=fail) x-dkim=fail")
         r = a.authentication.results
         self.assertEqual((r["spf"].result, r["dkim"].result, r["dmarc"].result), ("pass", None, None))
 
-    def test_only_topmost_header_used_against_forgery(self):
+    def test_default_selects_nothing_and_scores_nothing(self):
         a = self.auth(
-            "Authentication-Results: mx.real.example; spf=fail",
+            "Authentication-Results: mx.real.example; spf=fail; dmarc=fail",
             "Authentication-Results: forjado.example; spf=pass; dkim=pass; dmarc=pass",
+            trusted=None,
         )
-        r = a.authentication.results
-        self.assertEqual((r["spf"].result, r["dkim"].result), ("fail", None))
-        self.assertEqual(a.authentication.headers_found, 2)
+        auth = a.authentication
+        self.assertEqual(auth.headers_found, 2)
+        self.assertFalse(auth.selected)
+        self.assertFalse(any(h.selected for h in auth.headers))
+        self.assertEqual({r.status for r in auth.results.values()}, {"não avaliado"})
+        self.assertEqual(self.scored(a), [])
+        self.assertEqual([h.authserv_id for h in auth.headers], ["mx.real.example", "forjado.example"])
 
-    def test_trusted_authserv_id(self):
+    def test_forged_header_from_unselected_authserv_id_is_ignored(self):
         a = self.auth(
+            "Authentication-Results: mx.example; dmarc=fail",
             "Authentication-Results: forjado.example; dmarc=pass",
-            "Authentication-Results: mx.real.example; dmarc=fail",
-            trusted="mx.real.example",
         )
         self.assertEqual(a.authentication.results["dmarc"].result, "fail")
+        self.assertIn("forjado.example", " ".join(i.description for i in a.indicators))
+
+    def test_forged_header_on_top_does_not_win_by_position(self):
+        # Posição não prova origem: um cabeçalho no topo com outro authserv-id é ignorado.
+        a = self.auth(
+            "Authentication-Results: forjado.example; spf=pass; dkim=pass; dmarc=pass",
+            "Authentication-Results: mx.example; dmarc=fail",
+        )
+        self.assertEqual(a.authentication.authserv_id, "mx.example")
+        self.assertEqual(a.authentication.results["dmarc"].result, "fail")
+
+    def test_forged_header_reusing_selected_authserv_id_is_reported(self):
+        a = self.auth(
+            "Authentication-Results: mx.example; dmarc=fail",
+            "Authentication-Results: mx.example; dmarc=pass",
+        )
+        self.assertEqual(a.authentication.results["dmarc"].result, "fail")
+        self.assertEqual(a.authentication.duplicates_of_selected, 1)
+        self.assertIn("mesmo authserv-id", " ".join(i.description for i in a.indicators))
+
+    def test_unexpected_authserv_id_selects_nothing(self):
+        a = self.auth("Authentication-Results: outro.example; dmarc=fail", trusted="mx.example")
+        self.assertFalse(a.authentication.selected)
+        self.assertEqual({r.status for r in a.authentication.results.values()}, {"não avaliado"})
+        self.assertEqual(self.scored(a), [])
+        self.assertIn("outro.example", " ".join(i.description for i in a.indicators))
+
+    def test_explicit_selection_is_case_insensitive(self):
+        a = self.auth("Authentication-Results: MX.Example; spf=fail", trusted=" mx.EXAMPLE ")
+        self.assertEqual(a.authentication.authserv_id, "mx.example")
+        self.assertEqual(a.authentication.results["spf"].status, "falha")
+
+    def test_pass_does_not_mean_legitimate(self):
+        a = self.auth(
+            "Authentication-Results: mx.example; spf=pass; dkim=pass; dmarc=pass",
+            extra=("Content-Type: text/html",),
+        )
+        self.assertEqual(a.authentication.results["dmarc"].status, "pass declarado")
+        self.assertEqual(a.score, 0)  # "pass" não gera pontuação negativa nem "legítimo"
+
+        phish = headers(
+            "Authentication-Results: mx.example; spf=pass; dkim=pass; dmarc=pass",
+            "From: a@x.example", "Reply-To: b@golpe.example", "Message-ID: <1@x>",
+            "Content-Type: text/html",
+            body='<a href="http://203.0.113.9/login">https://x.example/login</a>',
+        )
+        b = analyze_email(self.eml(phish, "phish.eml"), "mx.example")
+        self.assertEqual(b.suspicion_level, "ALTO")
+        self.assertGreaterEqual(b.score, 6)
 
     def test_multiple_dkim_signatures_any_pass(self):
         a = self.auth("Authentication-Results: mx.example; dkim=fail header.d=a; dkim=pass header.d=b")
@@ -244,7 +310,7 @@ class RobustnessTests(TempDirTest):
         raw = (
             "From: a@x.example\nMessage-ID: <1@x>\nContent-Type: multipart/mixed; boundary=B\n\n"
             "--B\nContent-Type: application/octet-stream\n"
-            'Content-Disposition: attachment; filename="fatura‮fdp.exe"\n\nMZ\n--B--\n'
+            'Content-Disposition: attachment; filename="fatura\u202efdp.exe"\n\nMZ\n--B--\n'
         ).encode("utf-8")
         a = analyze_email(self.eml(raw))
         self.assertIn("bidirecional", " ".join(i.description for i in a.indicators))
@@ -284,7 +350,9 @@ class CaseWorkflowTests(TempDirTest):
         panel = render_panel(result)
         self.assertIn("● VERIFICADA", panel)
         self.assertIn(short_hash(result.sha256), panel)
-        self.assertIn("Não comprova a autenticidade", panel)
+        self.assertIn("não demonstra autoria", panel)
+        self.assertIn("isoladamente, autenticidade", panel)
+        self.assertNotRegex(panel.lower(), r"\bvalidad|\bcomprova\b|\blegítimo\b")
 
     def test_case_dir_contains_no_extracted_attachment(self):
         write_reports(run_case(self.source, self.case_dir))
@@ -334,6 +402,18 @@ class CaseWorkflowTests(TempDirTest):
         path.write_text(json.dumps(data), encoding="utf-8")
         self.assertFalse(ChainOfCustody.load(path).verify_chain())
         self.assertEqual(main(["verify", str(self.case_dir)]), 1)
+
+    def test_verify_ignores_path_components_in_custody_log(self):
+        # Mesmo com encadeamento válido, o nome registrado não pode apontar para fora do caso.
+        outside = self.tmp / "fora.eml"
+        outside.write_bytes(b"x")
+        for name in ("../../fora.eml", ".."):
+            case = self.tmp / f"caso_{len(name)}"
+            (case / "evidencia").mkdir(parents=True)
+            custody = ChainOfCustody(evidence=name, path=case / CUSTODY_FILE)
+            custody.record("Hash inicial", sha256=sha256_file(outside))
+            self.assertTrue(custody.verify_chain())
+            self.assertEqual(main(["verify", str(case)]), 1)
 
     def test_terminal_and_markdown_escape_hostile_content(self):
         raw = "From: a@x.example\nMessage-ID: <1@x>\nSubject: =?UTF-8?Q?ol=1B[2J_<img_src=3Dx>?=\n\nhi\n"

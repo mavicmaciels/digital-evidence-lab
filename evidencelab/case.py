@@ -104,7 +104,7 @@ def run_case(
         custody.record("Verificação de integridade", "FALHA: hash divergente do inicial")
         raise IntegrityError("A cópia de trabalho foi alterada após a aquisição")
     custody.record("Verificação de integridade", "Hash após a análise igual ao inicial", digest)
-    steps.append("Integridade verificada (hash inalterado)")
+    steps.append("Integridade verificada (SHA-256 igual ao registrado)")
 
     timeline = build_timeline(analysis, custody)
     steps.append("Timeline construída (UTC)")
