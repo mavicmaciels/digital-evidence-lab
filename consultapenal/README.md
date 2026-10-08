@@ -79,3 +79,9 @@ consultapenal/
 ```
 
 Testes: `python3 -m unittest tests.test_consultapenal`.
+
+## Documentação
+
+O caderno do projeto (ebook em PDF, com o estado atual, modelo de dados e capturas de tela)
+está em `docs/consultapenal/ebook/consulta-penal-caderno-do-projeto.pdf`; a fonte é
+`docs/consultapenal/ebook/ebook.html`.

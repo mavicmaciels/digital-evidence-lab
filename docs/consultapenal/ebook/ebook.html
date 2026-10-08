@@ -1,0 +1,665 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Consulta Penal — Caderno do projeto</title>
+<style>
+  :root {
+    --marfim: #f6f0e6; --papel: #fffdf9; --linha: #e6dccb; --linha-forte: #d8c9b1;
+    --bordo-950: #2e0810; --bordo-900: #3f0c17; --bordo-800: #561322; --bordo: #6b1a2b; --bordo-600: #8a2b3d; --bordo-claro: #f6e9e7;
+    --ouro: #a8834a; --ouro-claro: #cdb07a; --ouro-fundo: #f3eadb;
+    --tinta: #2b1d1b; --texto: #43312e; --texto-suave: #76625c;
+    --verde: #2f6b4f; --verde-fundo: #e9f1ea; --vermelho: #a3263a; --vermelho-fundo: #fbecea;
+    --serifa: "Cormorant Garamond", "EB Garamond", "Palatino Linotype", Palatino, "Bitstream Charter", Georgia, serif;
+    --sans: Inter, "Segoe UI", system-ui, Arial, sans-serif;
+    --mono: "DejaVu Sans Mono", "Liberation Mono", monospace;
+  }
+  @page { size: A4; margin: 22mm 20mm 22mm 20mm; }
+  @page capa { margin: 0; }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { margin: 0; font: 9.8pt/1.5 var(--sans); color: var(--texto); background: #fff; }
+
+  h1, h2, h3, h4 { font-family: var(--serifa); color: var(--bordo-900); font-weight: 600; margin: 0; letter-spacing: -.01em; }
+  p { margin: 0 0 8pt; }
+  strong { color: var(--tinta); }
+  code { font: 8.6pt var(--mono); background: var(--ouro-fundo); color: var(--bordo-800); padding: 0 3pt; border-radius: 3pt; }
+  a { color: var(--bordo); text-decoration: none; }
+
+  /* ----- capa ----- */
+  .capa {
+    page: capa; height: 297mm; width: 210mm; position: relative; overflow: hidden;
+    background: radial-gradient(120% 60% at 0% 100%, rgba(168,131,74,.22), transparent 60%),
+                linear-gradient(170deg, var(--bordo-800), var(--bordo-950));
+    color: #f6e8d8; padding: 30mm 24mm;
+    display: flex; flex-direction: column;
+  }
+  .capa::after { content: ""; position: absolute; inset: 12mm; border: 0.6pt solid rgba(205,176,122,.5); pointer-events: none; }
+  .capa::before { content: ""; position: absolute; inset: 14mm; border: 0.3pt solid rgba(205,176,122,.3); pointer-events: none; }
+  .capa svg { width: 22mm; height: 22mm; color: var(--ouro-claro); fill: none; stroke: currentColor; stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; }
+  .capa-marca { margin-top: 6mm; font: 600 13pt var(--serifa); letter-spacing: .3em; text-transform: uppercase; color: var(--ouro-claro); }
+  .capa h1 { margin-top: 38mm; font-size: 46pt; line-height: 1; color: #fbf3ea; letter-spacing: -.02em; }
+  .capa h1 em { display: block; font-style: normal; color: var(--ouro-claro); }
+  .capa-sub { margin-top: 10mm; max-width: 125mm; font-size: 12pt; line-height: 1.55; color: #ead9cc; }
+  .capa-filete { width: 22mm; height: 1pt; background: var(--ouro-claro); margin: 12mm 0 8mm; }
+  .capa-rodape { margin-top: auto; display: flex; justify-content: space-between; align-items: flex-end; font-size: 9pt; letter-spacing: .14em; text-transform: uppercase; color: var(--ouro-claro); }
+  .capa-rodape span:last-child { text-align: right; }
+
+  /* ----- estrutura ----- */
+  .capitulo { break-before: page; }
+  .rotulo { display: block; font: 600 7.6pt var(--sans); letter-spacing: .18em; text-transform: uppercase; color: var(--ouro); }
+  .cap-cabeca { padding-bottom: 5mm; margin-bottom: 4mm; border-bottom: .6pt solid var(--linha-forte); }
+  .cap-cabeca h1 { font-size: 28pt; line-height: 1.05; margin-top: 3mm; }
+  .cap-cabeca p { margin-top: 4mm; font-size: 11pt; color: var(--texto-suave); max-width: 145mm; }
+  h2 { font-size: 16pt; margin: 6.5mm 0 2.5mm; }
+  h3 { font-size: 12.5pt; margin: 4.5mm 0 1.5mm; color: var(--tinta); }
+  ul, ol { margin: 0 0 8pt; padding-left: 14pt; }
+  li { margin-bottom: 3pt; }
+  li::marker { color: var(--ouro); }
+  .evitar-quebra { break-inside: avoid; }
+
+  /* ----- sumário ----- */
+  .sumario ol { list-style: none; padding: 0; margin: 0; counter-reset: cap; }
+  .sumario li { display: flex; align-items: baseline; gap: 6mm; padding: 3.6mm 0; border-bottom: .5pt solid var(--linha); counter-increment: cap; }
+  .sumario li::before { content: counter(cap, decimal-leading-zero); font: 600 15pt var(--serifa); color: var(--ouro); min-width: 10mm; }
+  .sumario strong { font: 600 14pt var(--serifa); color: var(--bordo-900); display: block; }
+  .sumario span { font-size: 9.4pt; color: var(--texto-suave); }
+
+  /* ----- componentes ----- */
+  .destaque {
+    padding: 5mm 6mm; margin: 5mm 0; border-radius: 3mm;
+    background: var(--ouro-fundo); border: .6pt solid #e8d8bb; color: #5d4628; font-size: 9.6pt;
+  }
+  .destaque strong { color: #4a3519; }
+  .destaque.bordo { background: var(--bordo-claro); border-color: #ecd2cf; color: var(--bordo-800); }
+  .destaque.bordo strong { color: var(--bordo-900); }
+  .destaque p:last-child { margin-bottom: 0; }
+
+  .grade2 { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; }
+  .grade3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4mm; }
+  .cartao { padding: 3.5mm 4mm; border: .6pt solid var(--linha); border-radius: 3mm; background: var(--papel); break-inside: avoid; }
+  .cartao h4 { font-size: 12.5pt; margin-bottom: 2mm; }
+  .cartao p { font-size: 9.2pt; margin: 0; color: var(--texto-suave); }
+
+  table { width: 100%; border-collapse: collapse; margin: 3mm 0 6mm; font-size: 8.9pt; break-inside: auto; }
+  thead { display: table-header-group; }
+  tr { break-inside: avoid; }
+  th { text-align: left; font: 600 7.4pt var(--sans); letter-spacing: .12em; text-transform: uppercase; color: var(--ouro); padding: 2.5mm 3mm; border-bottom: .8pt solid var(--bordo); }
+  td { padding: 2.5mm 3mm; border-bottom: .5pt solid var(--linha); vertical-align: top; }
+  td:first-child { white-space: nowrap; }
+
+  figure { margin: 3mm 0 5mm; break-inside: avoid; }
+  figure.tela img { width: 86%; margin: 0 auto; }
+  figure.tela figcaption { width: 86%; margin-left: auto; margin-right: auto; }
+  .junto { break-inside: avoid; }
+  figure img { width: 100%; display: block; border-radius: 2.5mm; border: .6pt solid var(--linha-forte); box-shadow: 0 2mm 6mm -3mm rgba(63,12,23,.35); }
+  figcaption { margin-top: 2.5mm; font-size: 8.4pt; color: var(--texto-suave); }
+  figcaption b { color: var(--bordo); font-weight: 600; }
+  .celulares { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5mm; }
+  .celulares img { border-radius: 4mm; }
+
+  .paleta { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3mm; margin: 4mm 0 6mm; }
+  .cor { border: .6pt solid var(--linha); border-radius: 2.5mm; overflow: hidden; break-inside: avoid; }
+  .cor i { display: block; height: 10mm; }
+  .cor div { padding: 2mm 3mm; font-size: 8pt; }
+  .cor b { display: block; font-size: 8.8pt; color: var(--tinta); }
+
+  .tipos { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; }
+  .tipo-amostra { padding: 5mm; border: .6pt solid var(--linha); border-radius: 3mm; }
+  .tipo-amostra .grande { font: 600 26pt/1 var(--serifa); color: var(--bordo-900); }
+  .tipo-amostra .grande em { font-style: normal; color: var(--ouro); }
+  .tipo-amostra .sans { font: 500 15pt/1.2 var(--sans); color: var(--tinta); }
+
+  pre {
+    margin: 3mm 0 6mm; padding: 4mm 5mm; border-radius: 3mm; background: var(--bordo-950); color: #f3e6d8;
+    font: 8pt/1.5 var(--mono); white-space: pre-wrap; break-inside: avoid;
+  }
+  pre .c { color: var(--ouro-claro); }
+  pre .k { color: #e9b9a6; }
+
+  .lista-check { list-style: none; padding: 0; }
+  .lista-check li { position: relative; padding-left: 7mm; margin-bottom: 2.2mm; }
+  .lista-check li::before { content: ""; position: absolute; left: 0; top: 1.3mm; width: 3.4mm; height: 3.4mm; border-radius: 50%; background: var(--verde); }
+  .lista-check li::after { content: ""; position: absolute; left: 1.05mm; top: 2.15mm; width: 1.3mm; height: .75mm; border-left: .5mm solid #fff; border-bottom: .5mm solid #fff; transform: rotate(-45deg); }
+  .lista-demo { list-style: none; padding: 0; }
+  .lista-demo li { position: relative; padding-left: 7mm; margin-bottom: 2.2mm; }
+  .lista-demo li::before { content: ""; position: absolute; left: 0; top: 1.3mm; width: 3.4mm; height: 3.4mm; border-radius: 50%; border: .5mm dashed var(--bordo); box-sizing: border-box; }
+  .lista-pend li::before { border-color: var(--ouro); border-style: solid; }
+
+  .etapas-linha { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4mm; margin: 4mm 0; }
+  .etapa { padding: 4mm; border-top: 1.2mm solid var(--linha-forte); background: var(--papel); border-radius: 0 0 2mm 2mm; break-inside: avoid; }
+  .etapa.feita { border-top-color: var(--bordo); }
+  .etapa .rotulo { margin-bottom: 1mm; }
+  .etapa h4 { font-size: 12pt; margin-bottom: 1.5mm; }
+  .etapa p { font-size: 8.6pt; margin: 0; color: var(--texto-suave); }
+
+  .diagrama { margin: 4mm 0 6mm; break-inside: avoid; }
+  .diagrama svg { width: 100%; height: auto; }
+
+  .colofao { margin-top: 18mm; padding-top: 6mm; border-top: .6pt solid var(--linha-forte); font-size: 8.6pt; color: var(--texto-suave); }
+</style>
+</head>
+<body>
+
+<!-- ================================================================ CAPA -->
+<section class="capa">
+  <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4 11 16 4l12 7M5 11h22M7 14v11M12 14v11M16 14v11M20 14v11M25 14v11M5 27h22M3 30h26"/></svg>
+  <div class="capa-marca">Consulta Penal</div>
+  <h1>Caderno<em>do projeto</em></h1>
+  <div class="capa-filete"></div>
+  <p class="capa-sub">Tudo o que foi construído até aqui: proposta, identidade visual, painel inicial, fichas temáticas, página “Leis e temas”, modelo de dados, arquitetura e próximos passos.</p>
+  <div class="capa-rodape">
+    <span>Penal · Cível · Família</span>
+    <span>Versão 0.2<br>Outubro de 2026</span>
+  </div>
+</section>
+
+<!-- ================================================================ SUMÁRIO -->
+<section class="capitulo sumario">
+  <div class="cap-cabeca">
+    <span class="rotulo">Sumário</span>
+    <h1>Neste caderno</h1>
+    <p>Um registro do estado atual do projeto para consulta, revisão e alinhamento antes da próxima etapa.</p>
+  </div>
+  <ol>
+    <li><div><strong>O projeto</strong><span>Proposta, princípios e público.</span></div></li>
+    <li><div><strong>Identidade visual</strong><span>Paleta, tipografia e componentes de interface.</span></div></li>
+    <li><div><strong>Painel inicial</strong><span>Visão geral, busca e cartões de acesso rápido.</span></div></li>
+    <li><div><strong>Leis e temas</strong><span>Navegação por área, ficha temática e página de lei.</span></div></li>
+    <li><div><strong>Modelo de dados</strong><span>Arquivos, campos da ficha e relações entre conteúdos.</span></div></li>
+    <li><div><strong>Como cadastrar conteúdo</strong><span>Passo a passo, regras de validação e mensagens de erro.</span></div></li>
+    <li><div><strong>Arquitetura técnica</strong><span>Estrutura de pastas, servidor, rotas, segurança e testes.</span></div></li>
+    <li><div><strong>Estado atual</strong><span>O que funciona, o que é demonstrativo e o que está pendente.</span></div></li>
+    <li><div><strong>Próximos passos</strong><span>Histórico de entregas e roteiro sugerido.</span></div></li>
+  </ol>
+</section>
+
+<!-- ================================================================ 1. PROJETO -->
+<section class="capitulo">
+  <div class="cap-cabeca">
+    <span class="rotulo">Capítulo 01</span>
+    <h1>O projeto</h1>
+    <p>Uma plataforma de consulta jurídica prática, organizada para o uso diário, com conteúdo cadastrado e conferido manualmente.</p>
+  </div>
+
+  <h2>Proposta</h2>
+  <p>O <strong>Consulta Penal</strong> organiza, num só lugar, o material de apoio para consultas penais e cíveis, incluindo temas de família. O nome vem da origem do projeto, mas o escopo abrange as três áreas.</p>
+  <p>A plataforma reúne, de forma navegável e pesquisável:</p>
+  <div class="grade3">
+    <div class="cartao"><h4>Leis</h4><p>Diplomas legais com link para a fonte oficial.</p></div>
+    <div class="cartao"><h4>Fichas temáticas</h4><p>Um tema por ficha, com base legal, julgados e checklist.</p></div>
+    <div class="cartao"><h4>Jurisprudência</h4><p>Julgados selecionados, referenciados pela fonte oficial.</p></div>
+    <div class="cartao"><h4>Revisão de peça</h4><p>Checklists para conferir peças antes do protocolo.</p></div>
+    <div class="cartao"><h4>Erros recorrentes</h4><p>Correções de escrita jurídica: incorreto → correto.</p></div>
+    <div class="cartao"><h4>Calculadoras e ebooks</h4><p>Ferramentas práticas, tabelas-resumo e guias por tema.</p></div>
+  </div>
+
+  <h2>Princípios</h2>
+  <ul class="lista-check">
+    <li><strong>Conteúdo manual e conferido.</strong> Todo o conteúdo é cadastrado e revisado pela autora, em arquivos de dados.</li>
+    <li><strong>Sem inteligência artificial nas respostas.</strong> A plataforma não gera respostas nem análises jurídicas.</li>
+    <li><strong>Busca local.</strong> A busca encontra apenas o que está cadastrado, comparando palavras sem acento e sem diferenciar maiúsculas.</li>
+    <li><strong>Fonte oficial sempre à mão.</strong> O texto legal não é reproduzido; cada lei aponta para a redação oficial.</li>
+    <li><strong>Transparência sobre o status.</strong> Cada conteúdo tem um status (rascunho, demonstrativo ou conferido) visível na tela.</li>
+    <li><strong>Sem dados sensíveis.</strong> Nenhuma peça, caso, documento, dado pessoal ou material interno ou confidencial do Ministério Público.</li>
+  </ul>
+
+  <div class="destaque bordo">
+    <p><strong>Importante:</strong> todo o conteúdo jurídico existente hoje na plataforma é <strong>demonstrativo e fictício</strong>, criado apenas para visualizar o layout e a estrutura. Ele não constitui orientação jurídica validada.</p>
+  </div>
+</section>
+
+<!-- ================================================================ 2. IDENTIDADE -->
+<section class="capitulo">
+  <div class="cap-cabeca">
+    <span class="rotulo">Capítulo 02</span>
+    <h1>Identidade visual</h1>
+    <p>Atmosfera jurídica clássica, sofisticada e acolhedora, com foco em legibilidade para o uso diário.</p>
+  </div>
+
+  <h2>Paleta</h2>
+  <p>Fundo marfim, bordô profundo como cor principal e dourado envelhecido nos detalhes. Verde e vermelho aparecem apenas para indicar “correto” e “incorreto”.</p>
+  <div class="paleta">
+    <div class="cor"><i style="background:#f6f0e6"></i><div><b>Marfim</b>#F6F0E6 · fundo</div></div>
+    <div class="cor"><i style="background:#fffdf9"></i><div><b>Papel</b>#FFFDF9 · cartões</div></div>
+    <div class="cor"><i style="background:#6b1a2b"></i><div><b>Bordô</b>#6B1A2B · principal</div></div>
+    <div class="cor"><i style="background:#3f0c17"></i><div><b>Bordô profundo</b>#3F0C17 · títulos</div></div>
+    <div class="cor"><i style="background:#a8834a"></i><div><b>Dourado envelhecido</b>#A8834A · detalhes</div></div>
+    <div class="cor"><i style="background:#f3eadb"></i><div><b>Dourado claro</b>#F3EADB · realces</div></div>
+    <div class="cor"><i style="background:#2f6b4f"></i><div><b>Verde</b>#2F6B4F · correto</div></div>
+    <div class="cor"><i style="background:#a3263a"></i><div><b>Vermelho</b>#A3263A · incorreto</div></div>
+  </div>
+
+  <h2>Tipografia</h2>
+  <div class="tipos">
+    <div class="tipo-amostra">
+      <span class="rotulo">Títulos · serifa</span>
+      <div class="grande" style="margin-top:3mm">Seu acervo,<br><em>pronto para consulta.</em></div>
+      <p style="margin-top:3mm;font-size:8.6pt;color:var(--texto-suave)">Família serifada clássica (Cormorant/Garamond, com alternativas do sistema).</p>
+    </div>
+    <div class="tipo-amostra">
+      <span class="rotulo">Interface · sem serifa</span>
+      <div class="sans" style="margin-top:3mm">Busque lei, tema, erro ou ebook…</div>
+      <p style="margin-top:3mm;font-size:8.6pt;color:var(--texto-suave)">Inter (ou a fonte do sistema), escolhida pela legibilidade em telas pequenas.</p>
+    </div>
+  </div>
+
+  <h2>Componentes</h2>
+  <ul>
+    <li><strong>Menu lateral bordô</strong> com marca em dourado; no celular vira uma gaveta acionada pelo botão de menu.</li>
+    <li><strong>Cartões</strong> em papel claro, cantos arredondados, sombra suave e ícone em selo dourado.</li>
+    <li><strong>Etiquetas</strong> de área (Penal, Cível, Família) e de status (Demonstrativo, Rascunho, Conferido).</li>
+    <li><strong>Ícones</strong> próprios, de traço simples, sem imagens externas e sem fotos de pessoas.</li>
+    <li><strong>Capas de ebook</strong> desenhadas só com CSS, em três variações: bordô, grafite e areia.</li>
+  </ul>
+</section>
+
+<!-- ================================================================ 3. PAINEL -->
+<section class="capitulo">
+  <div class="cap-cabeca">
+    <span class="rotulo">Capítulo 03</span>
+    <h1>Painel inicial</h1>
+    <p>A visão geral reúne a busca e os atalhos mais usados, organizados por área.</p>
+  </div>
+
+  <figure class="tela">
+    <img src="img/painel.jpg" alt="">
+    <figcaption><b>Visão geral.</b> Menu lateral, abertura com título em serifa, busca em destaque, sugestões e aviso de conteúdo demonstrativo.</figcaption>
+  </figure>
+
+  <h2>O que o painel contém</h2>
+  <table>
+    <thead><tr><th>Área</th><th>Função</th></tr></thead>
+    <tbody>
+      <tr><td>Menu lateral</td><td>Visão geral, Leis e temas, Jurisprudência, Revisão de peça, Calculadoras e Ebooks. Os quatro últimos estão marcados como “em breve”.</td></tr>
+      <tr><td>Busca</td><td>Procura em leis, fichas, jurisprudência, erros e ebooks. Atalho: tecla <code>/</code>. Resultados de leis e fichas abrem a página correspondente.</td></tr>
+      <tr><td>Acesso rápido por área</td><td>Cartões Penal, Cível e Família, com as fichas de cada área e o link “Ver fichas”.</td></tr>
+      <tr><td>Erros recorrentes</td><td>Exemplo de correção de escrita jurídica, com navegação entre os exemplos.</td></tr>
+      <tr><td>Continuar de onde parou</td><td>Consulta recente com barra de progresso e etapas; o botão abre a ficha ligada.</td></tr>
+      <tr><td>Ebooks específicos</td><td>Vitrine com capas, área e descrição.</td></tr>
+      <tr><td>Links rápidos</td><td>Código Penal, CPP, Código Civil, CPC, Lei Maria da Penha e ECA.</td></tr>
+    </tbody>
+  </table>
+
+  <figure class="tela">
+    <img src="img/painel-areas.jpg" alt="">
+    <figcaption><b>Acesso rápido por área</b>, erros recorrentes e retomada da consulta recente.</figcaption>
+  </figure>
+
+  <figure class="tela">
+    <img src="img/painel-cartoes.jpg" alt="">
+    <figcaption><b>Ebooks específicos e links rápidos</b> para os principais diplomas.</figcaption>
+  </figure>
+
+  <figure class="tela">
+    <img src="img/busca.jpg" alt="">
+    <figcaption><b>Busca no acervo cadastrado.</b> A pesquisa por “guarda” encontra a ficha, o ebook e a lei relacionados.</figcaption>
+  </figure>
+
+  <div class="junto">
+  <h2>No celular</h2>
+  <div class="celulares">
+    <figure><img src="img/m-painel.jpg" alt=""><figcaption><b>Painel</b> em 390 px.</figcaption></figure>
+    <figure><img src="img/m-menu.jpg" alt=""><figcaption><b>Menu</b> em gaveta.</figcaption></figure>
+    <figure><img src="img/m-lista.jpg" alt=""><figcaption><b>Leis e temas</b> com abas roláveis.</figcaption></figure>
+  </div>
+  </div>
+</section>
+
+<!-- ================================================================ 4. LEIS E TEMAS -->
+<section class="capitulo">
+  <div class="cap-cabeca">
+    <span class="rotulo">Capítulo 04</span>
+    <h1>Leis e temas</h1>
+    <p>A página para navegar por área, abrir as fichas temáticas e consultar as leis cadastradas.</p>
+  </div>
+
+  <figure class="tela">
+    <img src="img/lista.jpg" alt="">
+    <figcaption><b>Leis e temas.</b> Abas por área com contagem, filtro por título ou palavra-chave e fichas agrupadas por área.</figcaption>
+  </figure>
+
+  <h2>A página “Leis e temas”</h2>
+  <ul>
+    <li><strong>Abas</strong> Todas, Penal, Cível e Família, cada uma com o número de fichas.</li>
+    <li><strong>Filtro</strong> instantâneo por título ou palavra-chave, sem acento e sem diferenciar maiúsculas.</li>
+    <li><strong>Cartões de ficha</strong> com área, status, resumo e contadores de leis, julgados e itens de checklist.</li>
+    <li><strong>Legislação</strong> da área, com link para a página de cada lei.</li>
+  </ul>
+
+  <div class="junto">
+  <h2>A ficha temática</h2>
+  <figure class="tela">
+    <img src="img/ficha.jpg" alt="">
+    <figcaption><b>Ficha “Guarda compartilhada”</b> (demonstrativa): cabeçalho, aviso, base legal e índice lateral.</figcaption>
+  </figure>
+  </div>
+
+  <p>Cada ficha segue a mesma organização, com seções numeradas e uma coluna lateral:</p>
+  <div class="grade2">
+    <div class="cartao"><h4>Cabeçalho</h4><p>Caminho de navegação, área, status, título, resumo, data de revisão e palavras-chave (que disparam a busca).</p></div>
+    <div class="cartao"><h4>Base legal</h4><p>Leis ligadas ao tema, com dispositivos, observação e link para a fonte oficial.</p></div>
+    <div class="cartao"><h4>Jurisprudência selecionada</h4><p>Tribunal, órgão, classe, número, data e assunto. Sem trechos: o inteiro teor fica na fonte oficial.</p></div>
+    <div class="cartao"><h4>Checklist</h4><p>Itens marcáveis, com progresso. As marcações ficam salvas apenas no navegador.</p></div>
+    <div class="cartao"><h4>Erros recorrentes</h4><p>Pares incorreto → correto, com explicação.</p></div>
+    <div class="cartao"><h4>Coluna lateral</h4><p>Índice “Nesta ficha”, ebooks, temas relacionados e observações.</p></div>
+  </div>
+
+  <figure class="tela">
+    <img src="img/ficha-baixo.jpg" alt="">
+    <figcaption><b>Jurisprudência, checklist e coluna lateral</b> da ficha demonstrativa.</figcaption>
+  </figure>
+
+  <div class="junto">
+  <h2>A página de lei</h2>
+  <figure class="tela">
+    <img src="img/lei.jpg" alt="">
+    <figcaption><b>Código Civil.</b> Norma, link para a fonte oficial e fichas que citam a lei, com os dispositivos.</figcaption>
+  </figure>
+  </div>
+
+  <div class="celulares" style="grid-template-columns: 1fr 2fr; align-items: start;">
+    <figure><img src="img/m-ficha.jpg" alt=""><figcaption><b>Ficha no celular:</b> as seções empilham e a coluna lateral vai para o fim.</figcaption></figure>
+    <div class="destaque" style="margin-top:5mm">
+      <p><strong>Endereços das páginas</strong></p>
+      <p><code>#/</code> visão geral<br>
+         <code>#/leis-e-temas</code> todas as áreas<br>
+         <code>#/leis-e-temas/familia</code> uma área<br>
+         <code>#/temas/guarda-compartilhada</code> ficha<br>
+         <code>#/leis/codigo-civil</code> lei</p>
+      <p>Cada página tem endereço próprio: dá para salvar nos favoritos, voltar com o navegador e abrir em outra aba.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================================ 5. MODELO DE DADOS -->
+<section class="capitulo">
+  <div class="cap-cabeca">
+    <span class="rotulo">Capítulo 05</span>
+    <h1>Modelo de dados</h1>
+    <p>Todo o conteúdo fica em arquivos JSON na pasta <code>consultapenal/dados/</code>. A interface não contém texto jurídico fixo.</p>
+  </div>
+
+  <h2>Arquivos</h2>
+  <table>
+    <thead><tr><th>Arquivo</th><th>Conteúdo</th><th>Hoje</th></tr></thead>
+    <tbody>
+      <tr><td><code>painel.json</code></td><td>Nome, títulos, aviso, sugestões de busca e links rápidos.</td><td>—</td></tr>
+      <tr><td><code>areas.json</code></td><td>Áreas: Penal, Cível e Família.</td><td>3</td></tr>
+      <tr><td><code>leis.json</code></td><td>Diplomas legais, com sigla, norma e fonte oficial.</td><td>7</td></tr>
+      <tr><td><code>temas/&lt;id&gt;.json</code></td><td>Fichas temáticas, uma por arquivo.</td><td>12</td></tr>
+      <tr><td><code>jurisprudencia.json</code></td><td>Julgados selecionados (só referência).</td><td>3</td></tr>
+      <tr><td><code>erros.json</code></td><td>Erros recorrentes de escrita.</td><td>2</td></tr>
+      <tr><td><code>ebooks.json</code></td><td>Vitrine de ebooks.</td><td>3</td></tr>
+      <tr><td><code>consultas_recentes.json</code></td><td>Consulta a retomar, ligada a uma ficha.</td><td>1</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Relações da ficha temática</h2>
+  <p>A ficha é o centro do acervo: ela aponta, por <code>id</code>, para os demais conteúdos. Todas as referências são conferidas quando o acervo é carregado.</p>
+  <div class="diagrama">
+    <svg viewBox="0 0 640 250" xmlns="http://www.w3.org/2000/svg" font-family="Inter, Arial, sans-serif">
+      <defs><marker id="seta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10z" fill="#a8834a"/></marker></defs>
+      <g stroke="#a8834a" stroke-width="1.3" fill="none" marker-end="url(#seta)">
+        <path d="M250 112 L150 52"/><path d="M250 125 L150 125"/><path d="M250 138 L150 198"/>
+        <path d="M390 112 L490 52"/><path d="M390 125 L490 125"/><path d="M390 138 L490 198"/>
+        <path d="M320 168 L320 212" stroke-dasharray="3 3"/>
+      </g>
+      <g font-size="11">
+        <rect x="250" y="88" width="140" height="80" rx="10" fill="#6b1a2b"/>
+        <text x="320" y="122" fill="#fbf3ea" text-anchor="middle" font-family="Georgia, serif" font-size="16" font-weight="600">Ficha temática</text>
+        <text x="320" y="142" fill="#cdb07a" text-anchor="middle" font-size="10">temas/&lt;id&gt;.json</text>
+        <g fill="#fffdf9" stroke="#d8c9b1">
+          <rect x="20" y="30" width="130" height="44" rx="8"/><rect x="20" y="103" width="130" height="44" rx="8"/><rect x="20" y="176" width="130" height="44" rx="8"/>
+          <rect x="490" y="30" width="130" height="44" rx="8"/><rect x="490" y="103" width="130" height="44" rx="8"/><rect x="490" y="176" width="130" height="44" rx="8"/>
+        </g>
+        <g fill="#3f0c17" text-anchor="middle" font-weight="600">
+          <text x="85" y="50">base_legal</text><text x="85" y="123">jurisprudencia</text><text x="85" y="196">erros</text>
+          <text x="555" y="50">ebooks</text><text x="555" y="123">relacionados</text><text x="555" y="196">checklist</text>
+        </g>
+        <g fill="#76625c" text-anchor="middle" font-size="9.5">
+          <text x="85" y="64">→ leis.json</text><text x="85" y="137">→ jurisprudencia.json</text><text x="85" y="210">→ erros.json</text>
+          <text x="555" y="64">→ ebooks.json</text><text x="555" y="137">→ outras fichas</text><text x="555" y="210">itens na própria ficha</text>
+        </g>
+        <text x="320" y="230" fill="#76625c" text-anchor="middle" font-size="9.5">painel.json (links rápidos) e consultas_recentes.json (tema) também são conferidos</text>
+      </g>
+    </svg>
+  </div>
+
+  <h2>Campos da ficha</h2>
+  <table>
+    <thead><tr><th>Campo</th><th>Conteúdo</th><th>Obrigatório</th></tr></thead>
+    <tbody>
+      <tr><td><code>id</code></td><td>Identificador; igual ao nome do arquivo.</td><td>sim</td></tr>
+      <tr><td><code>titulo</code></td><td>Nome do tema.</td><td>sim</td></tr>
+      <tr><td><code>area</code></td><td><code>penal</code>, <code>civel</code> ou <code>familia</code>.</td><td>sim</td></tr>
+      <tr><td><code>resumo</code></td><td>Síntese do tema.</td><td>sim</td></tr>
+      <tr><td><code>status</code></td><td><code>rascunho</code>, <code>demonstrativo</code> ou <code>conferido</code>.</td><td>sim</td></tr>
+      <tr><td><code>revisado_em</code></td><td><code>null</code> ou data <code>AAAA-MM-DD</code>.</td><td>não</td></tr>
+      <tr><td><code>ordem</code></td><td>Posição dentro da área.</td><td>não</td></tr>
+      <tr><td><code>palavras_chave</code></td><td>Termos extras para busca e filtro.</td><td>não</td></tr>
+      <tr><td><code>base_legal</code></td><td>Lista de <code>{lei, dispositivos, observacao}</code>.</td><td>não</td></tr>
+      <tr><td><code>jurisprudencia</code></td><td>Ids de <code>jurisprudencia.json</code>.</td><td>não</td></tr>
+      <tr><td><code>checklist</code></td><td>Lista de textos.</td><td>não</td></tr>
+      <tr><td><code>erros</code></td><td>Ids de <code>erros.json</code>.</td><td>não</td></tr>
+      <tr><td><code>ebooks</code></td><td>Ids de <code>ebooks.json</code>.</td><td>não</td></tr>
+      <tr><td><code>relacionados</code></td><td>Ids de outras fichas.</td><td>não</td></tr>
+      <tr><td><code>observacoes</code></td><td>Texto livre.</td><td>não</td></tr>
+    </tbody>
+  </table>
+
+  <div class="junto">
+  <h3>Exemplo (ficha demonstrativa)</h3>
+<pre><span class="c">// consultapenal/dados/temas/guarda-compartilhada.json (trecho)</span>
+{
+  <span class="k">"id"</span>: "guarda-compartilhada",
+  <span class="k">"titulo"</span>: "Guarda compartilhada",
+  <span class="k">"area"</span>: "familia",
+  <span class="k">"status"</span>: "demonstrativo",
+  <span class="k">"revisado_em"</span>: null,
+  <span class="k">"resumo"</span>: "Resumo de exemplo. Texto fictício…",
+  <span class="k">"base_legal"</span>: [
+    { "lei": "codigo-civil", "dispositivos": "", "observacao": "" },
+    { "lei": "eca", "dispositivos": "", "observacao": "" }
+  ],
+  <span class="k">"jurisprudencia"</span>: ["exemplo-familia"],
+  <span class="k">"checklist"</span>: ["Conferir a redação vigente dos dispositivos na fonte oficial", "…"],
+  <span class="k">"erros"</span>: ["citacao-dispositivo", "a-nivel-de"],
+  <span class="k">"ebooks"</span>: ["exemplo-alimentos"],
+  <span class="k">"relacionados"</span>: ["alimentos", "medidas-protetivas"]
+}</pre>
+  </div>
+
+  <h3>Jurisprudência: só referência</h3>
+  <p>Os julgados guardam tribunal, órgão julgador, classe, número, data de julgamento, assunto e link para a fonte oficial. O catálogo não tem campos de ementa, tese ou trecho, e há um teste que garante isso.</p>
+</section>
+
+<!-- ================================================================ 6. CADASTRO -->
+<section class="capitulo">
+  <div class="cap-cabeca">
+    <span class="rotulo">Capítulo 06</span>
+    <h1>Como cadastrar conteúdo</h1>
+    <p>O cadastro é feito editando os arquivos de dados. Basta salvar e recarregar a página; não é preciso reiniciar o servidor.</p>
+  </div>
+
+  <h2>Nova ficha temática</h2>
+  <ol>
+    <li>Copie <code>dados/temas/_modelo.json</code> para <code>dados/temas/&lt;id&gt;.json</code>. Arquivos começados por <code>_</code> são modelos e não aparecem na plataforma.</li>
+    <li>Use no <code>id</code> o mesmo nome do arquivo, só com letras minúsculas, números e hífens (ex.: <code>prisao-preventiva</code>).</li>
+    <li>Preencha título, área, resumo e status. Os demais campos podem ficar vazios; a ficha mostra “Nenhum item cadastrado”.</li>
+    <li>Para ligar leis, julgados, erros e ebooks, use os <code>id</code>s já cadastrados nos respectivos arquivos.</li>
+    <li>Ao conferir o conteúdo, mude o status para <code>conferido</code> e preencha <code>revisado_em</code>.</li>
+  </ol>
+
+  <h2>Outros cadastros</h2>
+  <table>
+    <thead><tr><th>Para…</th><th>Edite</th></tr></thead>
+    <tbody>
+      <tr><td>Nova lei</td><td><code>leis.json</code>: id, sigla, nome, norma, área e fonte oficial.</td></tr>
+      <tr><td>Novo julgado</td><td><code>jurisprudencia.json</code>: id, área, tribunal, assunto e demais dados de referência.</td></tr>
+      <tr><td>Novo erro recorrente</td><td><code>erros.json</code>: id, título, incorreto, correto e explicação.</td></tr>
+      <tr><td>Novo ebook</td><td><code>ebooks.json</code>: id, título, área e capa (<code>bordo</code>, <code>grafite</code> ou <code>areia</code>).</td></tr>
+      <tr><td>Links rápidos do painel</td><td><code>painel.json</code>, lista <code>links_rapidos</code> com ids de leis.</td></tr>
+      <tr><td>Sugestões de busca</td><td><code>painel.json</code>, lista <code>buscas_sugeridas</code>.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="junto">
+  <h2>Validação automática</h2>
+  <p>Ao carregar o acervo, a plataforma confere os arquivos. Se algo estiver errado, a página mostra uma mensagem com o arquivo e o problema, em vez de exibir conteúdo quebrado.</p>
+  <ul>
+    <li>JSON mal formado (com linha e coluna do erro).</li>
+    <li>Campos obrigatórios ausentes.</li>
+    <li>Ids repetidos, inválidos ou diferentes do nome do arquivo da ficha.</li>
+    <li>Área desconhecida ou data de revisão fora do formato <code>AAAA-MM-DD</code>.</li>
+    <li>Referência a lei, julgado, erro, ebook ou ficha inexistente.</li>
+    <li>Ficha relacionada a si mesma.</li>
+  </ul>
+<pre><span class="c">Exemplos de mensagens</span>
+Arquivo de dados inválido: temas/alimentos.json: referência a leis inexistente "lei-inexistente"
+Arquivo de dados inválido: temas/alimentos.json: o id "outro-id" deve ser igual ao nome do arquivo
+Arquivo de dados inválido: erros.json: JSON inválido (linha 1, coluna 2)</pre>
+  </div>
+</section>
+
+<!-- ================================================================ 7. ARQUITETURA -->
+<section class="capitulo">
+  <div class="cap-cabeca">
+    <span class="rotulo">Capítulo 07</span>
+    <h1>Arquitetura técnica</h1>
+    <p>Simples, local e sem dependências externas, no mesmo padrão do projeto que já existia no repositório.</p>
+  </div>
+
+  <h2>Onde o projeto vive</h2>
+  <p>O repositório já continha o <strong>Digital Evidence Lab</strong>, uma ferramenta de triagem forense de e-mails sem relação com o Consulta Penal. Ele foi preservado intacto. O Consulta Penal está num pacote separado, <code>consultapenal/</code>, que segue as mesmas convenções e roda nos mesmos testes automáticos (CI).</p>
+
+<pre>consultapenal/
+├── __main__.py        <span class="c"># python3 -m consultapenal</span>
+├── server.py          <span class="c"># servidor local somente leitura</span>
+├── conteudo.py        <span class="c"># leitura e validação dos dados, referências e busca</span>
+├── dados/             <span class="c"># conteúdo cadastrável</span>
+│   ├── painel.json, areas.json, leis.json, jurisprudencia.json
+│   ├── erros.json, ebooks.json, consultas_recentes.json
+│   └── temas/         <span class="c"># uma ficha por arquivo + _modelo.json</span>
+└── static/
+    ├── index.html, app.css
+    └── js/            <span class="c"># app (rotas), ui, painel, temas</span>
+tests/test_consultapenal.py</pre>
+
+  <h2>Como executar</h2>
+<pre>python3 -m consultapenal                       <span class="c"># abre http://127.0.0.1:8765/</span>
+python3 -m consultapenal --port 9000 --no-browser
+python3 -m unittest tests.test_consultapenal   <span class="c"># testes do Consulta Penal</span></pre>
+  <p>Requer apenas Python 3.10 ou mais recente. Nada precisa ser instalado.</p>
+
+  <h2>Servidor e rotas</h2>
+  <table>
+    <thead><tr><th>Rota</th><th>Resposta</th></tr></thead>
+    <tbody>
+      <tr><td><code>/</code></td><td>A página da aplicação.</td></tr>
+      <tr><td><code>/static/…</code></td><td>CSS e módulos JavaScript, por lista fixa.</td></tr>
+      <tr><td><code>/api/painel</code></td><td>Todo o acervo validado, lido dos arquivos a cada requisição.</td></tr>
+      <tr><td><code>/api/busca?q=</code></td><td>Resultados da busca no conteúdo cadastrado.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Segurança</h2>
+  <ul>
+    <li>Escuta apenas em <code>127.0.0.1</code>, o próprio computador.</li>
+    <li>Aceita somente leitura (GET e HEAD); outros métodos são recusados.</li>
+    <li>Serve só os arquivos de uma lista fixa; caminhos como <code>../</code> não funcionam.</li>
+    <li>Política de segurança de conteúdo restritiva: sem scripts embutidos e sem recursos externos.</li>
+    <li>Textos dos dados são sempre inseridos como texto, nunca como HTML.</li>
+  </ul>
+
+  <h2>Testes</h2>
+  <p>São <strong>17 testes</strong> do Consulta Penal (86 no repositório inteiro, todos passando). Eles cobrem:</p>
+  <ul>
+    <li>validade dos dados e presença dos seis links rápidos;</li>
+    <li>status demonstrativo em todo o conteúdo atual;</li>
+    <li>ordem das fichas, relações da ficha completa e listas vazias da ficha parcial;</li>
+    <li>ausência de ementas, teses ou trechos na jurisprudência;</li>
+    <li>busca sem acento, por palavra-chave e sem resultados;</li>
+    <li>mensagens de erro para referências inexistentes e formatos inválidos;</li>
+    <li>rotas do servidor, bloqueio de host estranho, de métodos e de caminhos fora da lista.</li>
+  </ul>
+</section>
+
+<!-- ================================================================ 8. ESTADO -->
+<section class="capitulo">
+  <div class="cap-cabeca">
+    <span class="rotulo">Capítulo 08</span>
+    <h1>Estado atual</h1>
+    <p>O que já funciona, o que ainda é demonstrativo e o que depende de decisão ou conferência.</p>
+  </div>
+
+  <h2>Já funciona</h2>
+  <ul class="lista-check">
+    <li>Painel inicial completo, responsivo em computador e celular.</li>
+    <li>Busca local em leis, fichas, jurisprudência, erros e ebooks, com resultados que abrem as páginas.</li>
+    <li>Página “Leis e temas” com abas por área, filtro e legislação.</li>
+    <li>Ficha temática reutilizável para Penal, Cível e Família.</li>
+    <li>Página de lei com fonte oficial e fichas que a citam.</li>
+    <li>Checklist marcável, salvo no navegador.</li>
+    <li>Cadastro por arquivos, com validação e mensagens claras.</li>
+    <li>Testes automáticos no CI do repositório.</li>
+  </ul>
+
+  <h2>Ainda é demonstrativo</h2>
+  <ul class="lista-demo">
+    <li><strong>12 fichas</strong>, todas marcadas como “Demonstrativo”, com resumo de exemplo.</li>
+    <li><strong>Só 3 fichas completas</strong>: Tráfico privilegiado, Responsabilidade civil e Guarda compartilhada. As outras 9 têm apenas a base legal.</li>
+    <li><strong>Base legal sem dispositivos</strong>: liga o tema ao diploma, mas mostra “Dispositivos a cadastrar”.</li>
+    <li><strong>Jurisprudência fictícia</strong>: 3 referências com tribunal e número de exemplo, sem ementa, tese ou trecho.</li>
+    <li><strong>Checklist genérico</strong>: itens de conferência, sem orientação jurídica.</li>
+    <li><strong>Erros, ebooks e consulta recente</strong> de exemplo.</li>
+  </ul>
+
+  <h2>Pontos de atenção</h2>
+  <ul class="lista-demo lista-pend">
+    <li><strong>Guia Consulta Penal:</strong> não foi recebido. A ficha segue uma estrutura proposta e aprovada; quando o guia chegar, campos e ordem podem ser ajustados.</li>
+    <li><strong>Links de fonte oficial</strong> das leis apontam para o Planalto e devem ser conferidos.</li>
+    <li><strong>Marcações do checklist</strong> dependem da posição do item: se a lista for reordenada, as marcações se deslocam.</li>
+    <li><strong>Consulta recente</strong> ainda vem do arquivo de dados; não registra o que foi realmente consultado.</li>
+    <li><strong>Jurisprudência, Revisão de peça, Calculadoras e Ebooks</strong> aparecem no menu como “em breve”.</li>
+  </ul>
+</section>
+
+<!-- ================================================================ 9. PRÓXIMOS PASSOS -->
+<section class="capitulo">
+  <div class="cap-cabeca">
+    <span class="rotulo">Capítulo 09</span>
+    <h1>Próximos passos</h1>
+    <p>O caminho percorrido e o roteiro sugerido para as próximas entregas.</p>
+  </div>
+
+  <h2>Histórico de entregas</h2>
+  <div class="etapas-linha">
+    <div class="etapa feita"><span class="rotulo">v0.1</span><h4>Painel inicial</h4><p>Menu, busca, cartões por área, erros, ebooks, consulta recente e links rápidos.</p></div>
+    <div class="etapa feita"><span class="rotulo">v0.2</span><h4>Leis e temas</h4><p>Ficha temática, página por área, página de lei e validação de referências.</p></div>
+    <div class="etapa"><span class="rotulo">Próxima</span><h4>Ficha real</h4><p>Preencher uma ficha conferida para validar os campos.</p></div>
+    <div class="etapa"><span class="rotulo">Depois</span><h4>Jurisprudência</h4><p>Página própria sobre o catálogo existente.</p></div>
+  </div>
+
+  <h2>Roteiro sugerido</h2>
+  <ol>
+    <li><strong>Preencher uma ficha real</strong> com a estrutura atual, para confirmar se os campos atendem ao uso diário (e ajustar com o guia, se ele for enviado).</li>
+    <li><strong>Página Jurisprudência</strong>, reaproveitando o catálogo <code>jurisprudencia.json</code>, com filtros por área, tribunal e tema.</li>
+    <li><strong>Consulta recente real</strong>, registrando no navegador as últimas fichas abertas.</li>
+    <li><strong>Revisão de peça</strong>, reunindo os checklists por tipo de peça.</li>
+    <li><strong>Calculadoras</strong> e <strong>Ebooks</strong>, conforme a prioridade de uso.</li>
+  </ol>
+
+  <div class="destaque">
+    <p><strong>Antes do próximo passo:</strong> vale revisar este caderno e anotar o que deve mudar no painel, na ficha ou no modelo de dados. Ajustes de estrutura são mais simples agora, enquanto o conteúdo é demonstrativo.</p>
+  </div>
+
+  <div class="colofao">
+    <p><strong>Consulta Penal · Caderno do projeto · versão 0.2</strong><br>
+    Gerado em 8 de outubro de 2026 a partir do estado atual do repositório. As imagens são capturas reais da aplicação com conteúdo demonstrativo e fictício.<br>
+    Material de documentação do projeto. Não constitui orientação jurídica.</p>
+  </div>
+</section>
+
+</body>
+</html>
