@@ -1,0 +1,40 @@
+{
+  "jurisprudencia": [
+    {
+      "id": "exemplo-penal",
+      "area": "penal",
+      "tribunal": "Tribunal de exemplo",
+      "orgao_julgador": "Órgão julgador fictício",
+      "classe": "Classe de exemplo",
+      "numero": "0000000-00.0000.0.00.0000",
+      "data_julgamento": "2026-01-01",
+      "assunto": "Referência fictícia (Penal) para demonstrar o layout",
+      "fonte_oficial": "",
+      "status": "demonstrativo"
+    },
+    {
+      "id": "exemplo-civel",
+      "area": "civel",
+      "tribunal": "Tribunal de exemplo",
+      "orgao_julgador": "Órgão julgador fictício",
+      "classe": "Classe de exemplo",
+      "numero": "0000000-00.0000.0.00.0000",
+      "data_julgamento": "2026-01-01",
+      "assunto": "Referência fictícia (Cível) para demonstrar o layout",
+      "fonte_oficial": "",
+      "status": "demonstrativo"
+    },
+    {
+      "id": "exemplo-familia",
+      "area": "familia",
+      "tribunal": "Tribunal de exemplo",
+      "orgao_julgador": "Órgão julgador fictício",
+      "classe": "Classe de exemplo",
+      "numero": "0000000-00.0000.0.00.0000",
+      "data_julgamento": "2026-01-01",
+      "assunto": "Referência fictícia (Família) para demonstrar o layout",
+      "fonte_oficial": "",
+      "status": "demonstrativo"
+    }
+  ]
+}

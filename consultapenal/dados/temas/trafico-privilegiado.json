@@ -1,0 +1,40 @@
+{
+  "id": "trafico-privilegiado",
+  "titulo": "Tráfico privilegiado",
+  "area": "penal",
+  "ordem": 1,
+  "status": "demonstrativo",
+  "revisado_em": null,
+  "palavras_chave": [
+    "drogas",
+    "minorante"
+  ],
+  "resumo": "Resumo de exemplo. Texto fictício que apenas indica onde ficará a síntese do tema, a ser redigida e conferida pela autora.",
+  "base_legal": [
+    {
+      "lei": "lei-de-drogas",
+      "dispositivos": "",
+      "observacao": ""
+    }
+  ],
+  "jurisprudencia": [
+    "exemplo-penal"
+  ],
+  "checklist": [
+    "Conferir a redação vigente dos dispositivos na fonte oficial",
+    "Verificar se a jurisprudência selecionada continua atual",
+    "Revisar a forma de citação dos dispositivos e dos julgados",
+    "Item de exemplo a ser substituído pelo checklist conferido"
+  ],
+  "erros": [
+    "citacao-dispositivo"
+  ],
+  "ebooks": [
+    "exemplo-anpp"
+  ],
+  "relacionados": [
+    "dosimetria",
+    "anpp"
+  ],
+  "observacoes": "Ficha demonstrativa: estrutura preenchida com conteúdo fictício."
+}

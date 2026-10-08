@@ -1,0 +1,26 @@
+{
+  "id": "dosimetria",
+  "titulo": "Dosimetria da pena",
+  "area": "penal",
+  "ordem": 3,
+  "status": "demonstrativo",
+  "revisado_em": null,
+  "palavras_chave": [
+    "pena",
+    "fases"
+  ],
+  "resumo": "Resumo de exemplo. Texto fictício que apenas indica onde ficará a síntese do tema, a ser redigida e conferida pela autora.",
+  "base_legal": [
+    {
+      "lei": "codigo-penal",
+      "dispositivos": "",
+      "observacao": ""
+    }
+  ],
+  "jurisprudencia": [],
+  "checklist": [],
+  "erros": [],
+  "ebooks": [],
+  "relacionados": [],
+  "observacoes": ""
+}

@@ -1,0 +1,25 @@
+{
+  "id": "contratos",
+  "titulo": "Contratos em geral",
+  "area": "civel",
+  "ordem": 2,
+  "status": "demonstrativo",
+  "revisado_em": null,
+  "palavras_chave": [
+    "obrigações"
+  ],
+  "resumo": "Resumo de exemplo. Texto fictício que apenas indica onde ficará a síntese do tema, a ser redigida e conferida pela autora.",
+  "base_legal": [
+    {
+      "lei": "codigo-civil",
+      "dispositivos": "",
+      "observacao": ""
+    }
+  ],
+  "jurisprudencia": [],
+  "checklist": [],
+  "erros": [],
+  "ebooks": [],
+  "relacionados": [],
+  "observacoes": ""
+}

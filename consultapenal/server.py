@@ -9,6 +9,9 @@ Rotas:
   /                 página do painel
   /api/painel       conteúdo do painel, lido de `dados/` a cada requisição
   /api/busca?q=...  busca no conteúdo cadastrado
+
+As páginas internas (Leis e temas, fichas, leis) são rotas do navegador (#/...),
+servidas pela mesma página.
 """
 
 import json
@@ -23,7 +26,8 @@ STATIC_DIR = Path(__file__).resolve().parent / "static"
 STATIC_FILES = {
     "/": ("index.html", "text/html; charset=utf-8"),
     "/static/app.css": ("app.css", "text/css; charset=utf-8"),
-    "/static/app.js": ("app.js", "text/javascript; charset=utf-8"),
+    **{f"/static/js/{nome}": (f"js/{nome}", "text/javascript; charset=utf-8")
+       for nome in ("app.js", "ui.js", "painel.js", "temas.js")},
 }
 
 SECURITY_HEADERS = {

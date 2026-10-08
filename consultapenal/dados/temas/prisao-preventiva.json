@@ -1,0 +1,26 @@
+{
+  "id": "prisao-preventiva",
+  "titulo": "Prisão preventiva",
+  "area": "penal",
+  "ordem": 4,
+  "status": "demonstrativo",
+  "revisado_em": null,
+  "palavras_chave": [
+    "prisão",
+    "cautelar"
+  ],
+  "resumo": "Resumo de exemplo. Texto fictício que apenas indica onde ficará a síntese do tema, a ser redigida e conferida pela autora.",
+  "base_legal": [
+    {
+      "lei": "cpp",
+      "dispositivos": "",
+      "observacao": ""
+    }
+  ],
+  "jurisprudencia": [],
+  "checklist": [],
+  "erros": [],
+  "ebooks": [],
+  "relacionados": [],
+  "observacoes": ""
+}

@@ -1,0 +1,40 @@
+{
+  "id": "responsabilidade-civil",
+  "titulo": "Responsabilidade civil",
+  "area": "civel",
+  "ordem": 1,
+  "status": "demonstrativo",
+  "revisado_em": null,
+  "palavras_chave": [
+    "dano",
+    "indenização"
+  ],
+  "resumo": "Resumo de exemplo. Texto fictício que apenas indica onde ficará a síntese do tema, a ser redigida e conferida pela autora.",
+  "base_legal": [
+    {
+      "lei": "codigo-civil",
+      "dispositivos": "",
+      "observacao": ""
+    }
+  ],
+  "jurisprudencia": [
+    "exemplo-civel"
+  ],
+  "checklist": [
+    "Conferir a redação vigente dos dispositivos na fonte oficial",
+    "Verificar se a jurisprudência selecionada continua atual",
+    "Revisar a forma de citação dos dispositivos e dos julgados",
+    "Item de exemplo a ser substituído pelo checklist conferido"
+  ],
+  "erros": [
+    "a-nivel-de"
+  ],
+  "ebooks": [
+    "exemplo-revisao"
+  ],
+  "relacionados": [
+    "contratos",
+    "tutela-provisoria"
+  ],
+  "observacoes": "Ficha demonstrativa: estrutura preenchida com conteúdo fictício."
+}

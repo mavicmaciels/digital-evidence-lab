@@ -8,11 +8,24 @@
       "referencia": "Consulta de exemplo",
       "atualizado_em": "2026-10-08",
       "etapas": [
-        {"titulo": "Leitura da lei", "concluida": true},
-        {"titulo": "Jurisprudência selecionada", "concluida": true},
-        {"titulo": "Checklist de revisão", "concluida": false},
-        {"titulo": "Anotações", "concluida": false}
-      ]
+        {
+          "titulo": "Leitura da lei",
+          "concluida": true
+        },
+        {
+          "titulo": "Jurisprudência selecionada",
+          "concluida": true
+        },
+        {
+          "titulo": "Checklist de revisão",
+          "concluida": false
+        },
+        {
+          "titulo": "Anotações",
+          "concluida": false
+        }
+      ],
+      "tema": "guarda-compartilhada"
     }
   ]
 }

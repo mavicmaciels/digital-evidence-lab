@@ -1,0 +1,19 @@
+{
+  "id": "nome-do-arquivo-sem-extensao",
+  "titulo": "Título do tema",
+  "area": "penal | civel | familia",
+  "ordem": 99,
+  "status": "rascunho | demonstrativo | conferido",
+  "revisado_em": null,
+  "palavras_chave": ["termo"],
+  "resumo": "Síntese do tema.",
+  "base_legal": [
+    {"lei": "id-em-leis.json", "dispositivos": "art. …", "observacao": ""}
+  ],
+  "jurisprudencia": ["id-em-jurisprudencia.json"],
+  "checklist": ["Item a conferir"],
+  "erros": ["id-em-erros.json"],
+  "ebooks": ["id-em-ebooks.json"],
+  "relacionados": ["id-de-outra-ficha"],
+  "observacoes": ""
+}

@@ -1,0 +1,25 @@
+{
+  "id": "medidas-protetivas",
+  "titulo": "Medidas protetivas",
+  "area": "familia",
+  "ordem": 4,
+  "status": "demonstrativo",
+  "revisado_em": null,
+  "palavras_chave": [
+    "violência doméstica"
+  ],
+  "resumo": "Resumo de exemplo. Texto fictício que apenas indica onde ficará a síntese do tema, a ser redigida e conferida pela autora.",
+  "base_legal": [
+    {
+      "lei": "maria-da-penha",
+      "dispositivos": "",
+      "observacao": ""
+    }
+  ],
+  "jurisprudencia": [],
+  "checklist": [],
+  "erros": [],
+  "ebooks": [],
+  "relacionados": [],
+  "observacoes": ""
+}

@@ -1,0 +1,26 @@
+{
+  "id": "prazos-processuais",
+  "titulo": "Prazos processuais",
+  "area": "civel",
+  "ordem": 3,
+  "status": "demonstrativo",
+  "revisado_em": null,
+  "palavras_chave": [
+    "prazo",
+    "contagem"
+  ],
+  "resumo": "Resumo de exemplo. Texto fictício que apenas indica onde ficará a síntese do tema, a ser redigida e conferida pela autora.",
+  "base_legal": [
+    {
+      "lei": "cpc",
+      "dispositivos": "",
+      "observacao": ""
+    }
+  ],
+  "jurisprudencia": [],
+  "checklist": [],
+  "erros": [],
+  "ebooks": [],
+  "relacionados": [],
+  "observacoes": ""
+}

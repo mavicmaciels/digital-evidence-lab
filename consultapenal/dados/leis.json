@@ -7,8 +7,15 @@
       "norma": "Decreto-Lei n. 2.848/1940",
       "area": "penal",
       "icone": "livro",
-      "palavras_chave": ["crimes", "penas", "dosimetria", "parte geral", "parte especial"],
-      "status": "demonstrativo"
+      "palavras_chave": [
+        "crimes",
+        "penas",
+        "dosimetria",
+        "parte geral",
+        "parte especial"
+      ],
+      "status": "demonstrativo",
+      "fonte_oficial": "https://www.planalto.gov.br/ccivil_03/decreto-lei/del2848compilado.htm"
     },
     {
       "id": "cpp",
@@ -17,7 +24,29 @@
       "norma": "Decreto-Lei n. 3.689/1941",
       "area": "penal",
       "icone": "documento",
-      "palavras_chave": ["inquérito", "ação penal", "prisão", "provas", "recursos"],
+      "palavras_chave": [
+        "inquérito",
+        "ação penal",
+        "prisão",
+        "provas",
+        "recursos"
+      ],
+      "status": "demonstrativo",
+      "fonte_oficial": "https://www.planalto.gov.br/ccivil_03/decreto-lei/del3689compilado.htm"
+    },
+    {
+      "id": "lei-de-drogas",
+      "sigla": "LD",
+      "nome": "Lei de Drogas",
+      "norma": "Lei n. 11.343/2006",
+      "area": "penal",
+      "icone": "documento",
+      "palavras_chave": [
+        "drogas",
+        "tráfico",
+        "Sisnad"
+      ],
+      "fonte_oficial": "https://www.planalto.gov.br/ccivil_03/_ato2004-2006/2006/lei/l11343.htm",
       "status": "demonstrativo"
     },
     {
@@ -27,8 +56,15 @@
       "norma": "Lei n. 10.406/2002",
       "area": "civel",
       "icone": "livro",
-      "palavras_chave": ["obrigações", "contratos", "responsabilidade civil", "família", "sucessões"],
-      "status": "demonstrativo"
+      "palavras_chave": [
+        "obrigações",
+        "contratos",
+        "responsabilidade civil",
+        "família",
+        "sucessões"
+      ],
+      "status": "demonstrativo",
+      "fonte_oficial": "https://www.planalto.gov.br/ccivil_03/leis/2002/l10406compilada.htm"
     },
     {
       "id": "cpc",
@@ -37,8 +73,15 @@
       "norma": "Lei n. 13.105/2015",
       "area": "civel",
       "icone": "documento",
-      "palavras_chave": ["prazos", "recursos", "execução", "tutela provisória", "cumprimento de sentença"],
-      "status": "demonstrativo"
+      "palavras_chave": [
+        "prazos",
+        "recursos",
+        "execução",
+        "tutela provisória",
+        "cumprimento de sentença"
+      ],
+      "status": "demonstrativo",
+      "fonte_oficial": "https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2015/lei/l13105.htm"
     },
     {
       "id": "maria-da-penha",
@@ -47,8 +90,13 @@
       "norma": "Lei n. 11.340/2006",
       "area": "familia",
       "icone": "escudo",
-      "palavras_chave": ["violência doméstica", "medidas protetivas", "família"],
-      "status": "demonstrativo"
+      "palavras_chave": [
+        "violência doméstica",
+        "medidas protetivas",
+        "família"
+      ],
+      "status": "demonstrativo",
+      "fonte_oficial": "https://www.planalto.gov.br/ccivil_03/_ato2004-2006/2006/lei/l11340.htm"
     },
     {
       "id": "eca",
@@ -57,8 +105,14 @@
       "norma": "Lei n. 8.069/1990",
       "area": "familia",
       "icone": "pessoas",
-      "palavras_chave": ["criança", "adolescente", "guarda", "medidas socioeducativas"],
-      "status": "demonstrativo"
+      "palavras_chave": [
+        "criança",
+        "adolescente",
+        "guarda",
+        "medidas socioeducativas"
+      ],
+      "status": "demonstrativo",
+      "fonte_oficial": "https://www.planalto.gov.br/ccivil_03/leis/l8069.htm"
     }
   ]
 }
