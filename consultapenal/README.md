@@ -84,4 +84,5 @@ Testes: `python3 -m unittest tests.test_consultapenal`.
 
 O caderno do projeto (ebook em PDF, com o estado atual, modelo de dados e capturas de tela)
 está em `docs/consultapenal/ebook/consulta-penal-caderno-do-projeto.pdf`; a fonte é
-`docs/consultapenal/ebook/ebook.html`.
+`docs/consultapenal/ebook/ebook.html`. A versão para leitura no celular, com imagens
+embutidas, é `docs/consultapenal/ebook/consulta-penal-caderno.html`.
