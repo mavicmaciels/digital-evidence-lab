@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Consulta Penal</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <!-- Ícones: traço simples, herdam a cor do texto -->
+  <svg class="sprite" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <symbol id="i-coluna" viewBox="0 0 32 32"><path d="M4 11 16 4l12 7M5 11h22M7 14v11M12 14v11M16 14v11M20 14v11M25 14v11M5 27h22M3 30h26"/></symbol>
+      <symbol id="i-casa" viewBox="0 0 24 24"><path d="M3 11 12 4l9 7M5 10v10h5v-6h4v6h5V10"/></symbol>
+      <symbol id="i-livro" viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5zM4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5M8 7h8M8 10.5h6"/></symbol>
+      <symbol id="i-balanca" viewBox="0 0 24 24"><path d="M12 3v18M7 21h10M5 6h14M12 4.5 12 6M5 6l-3 7a3 3 0 0 0 6 0zM19 6l-3 7a3 3 0 0 0 6 0z"/></symbol>
+      <symbol id="i-documento" viewBox="0 0 24 24"><path d="M14 3H6v18h12V7zM14 3v4h4M9 12h6M9 15.5h6M9 9h2"/></symbol>
+      <symbol id="i-calculadora" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8.5 11h.01M12 11h.01M15.5 11h.01M8.5 14.5h.01M12 14.5h.01M15.5 14.5h.01M8.5 18h.01M12 18h.01M15.5 18h.01"/></symbol>
+      <symbol id="i-ebook" viewBox="0 0 24 24"><path d="M12 6.5C10 5 7 4.5 3 5v13c4-.5 7 0 9 1.5 2-1.5 5-2 9-1.5V5c-4-.5-7 0-9 1.5zM12 6.5v13"/></symbol>
+      <symbol id="i-busca" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></symbol>
+      <symbol id="i-seta" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+      <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+      <symbol id="i-escudo" viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6z"/><path d="m9 12 2 2 4-4"/></symbol>
+      <symbol id="i-pessoas" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c.5-3.5 3-5.5 6-5.5s5.5 2 6 5.5M16 5a3 3 0 0 1 0 6M18 14.5c1.8.7 3 2.6 3.3 5.5"/></symbol>
+      <symbol id="i-pena" viewBox="0 0 24 24"><path d="M20 4c-6 0-11 4-12.5 11L6 20M20 4c0 6-4 10.5-11 11.5M20 4 9.5 14.5M4 20h7"/></symbol>
+      <symbol id="i-relogio" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+      <symbol id="i-alerta" viewBox="0 0 24 24"><path d="M12 4 2.5 20h19zM12 10v4.5M12 17.5h.01"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="m6 12.5 4 4 8-9"/></symbol>
+      <symbol id="i-x" viewBox="0 0 24 24"><path d="m7 7 10 10M17 7 7 17"/></symbol>
+      <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+      <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8h.01"/></symbol>
+      <symbol id="i-grade" viewBox="0 0 24 24"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/></symbol>
+    </defs>
+  </svg>
+
+  <a class="pular" href="#conteudo">Pular para o conteúdo</a>
+
+  <div class="app">
+    <aside class="lateral" id="lateral" aria-label="Navegação principal">
+      <div class="marca">
+        <svg class="marca-icone" aria-hidden="true"><use href="#i-coluna"/></svg>
+        <div>
+          <span class="marca-nome" data-campo="nome">Consulta Penal</span>
+          <span class="marca-slogan" data-campo="slogan"></span>
+        </div>
+      </div>
+
+      <nav>
+        <ul class="menu">
+          <li><a href="#" class="ativo" aria-current="page"><svg aria-hidden="true"><use href="#i-casa"/></svg>Visão geral</a></li>
+          <li><a href="#" data-em-breve><svg aria-hidden="true"><use href="#i-livro"/></svg>Leis e temas<span class="em-breve">em breve</span></a></li>
+          <li><a href="#" data-em-breve><svg aria-hidden="true"><use href="#i-balanca"/></svg>Jurisprudência<span class="em-breve">em breve</span></a></li>
+          <li><a href="#" data-em-breve><svg aria-hidden="true"><use href="#i-documento"/></svg>Revisão de peça<span class="em-breve">em breve</span></a></li>
+          <li><a href="#" data-em-breve><svg aria-hidden="true"><use href="#i-calculadora"/></svg>Calculadoras<span class="em-breve">em breve</span></a></li>
+          <li><a href="#" data-em-breve><svg aria-hidden="true"><use href="#i-ebook"/></svg>Ebooks<span class="em-breve">em breve</span></a></li>
+        </ul>
+      </nav>
+
+      <div class="lateral-rodape">
+        <span class="ornamento" aria-hidden="true"></span>
+        <p>Conteúdo cadastrado e conferido manualmente.</p>
+      </div>
+    </aside>
+    <div class="veu" id="veu" hidden></div>
+
+    <div class="principal">
+      <header class="topo">
+        <button class="botao-menu" id="abrir-menu" type="button" aria-controls="lateral" aria-expanded="false">
+          <svg aria-hidden="true"><use href="#i-menu"/></svg><span class="sr">Abrir menu</span>
+        </button>
+        <div class="trilha"><svg aria-hidden="true"><use href="#i-grade"/></svg><span data-campo="nome">Consulta Penal</span><span aria-hidden="true">/</span><span>Visão geral</span></div>
+        <div class="status"><span class="ponto" aria-hidden="true"></span><span data-campo="status_acervo">Acervo em construção</span><span class="selo">Demonstrativo</span></div>
+      </header>
+
+      <main id="conteudo">
+        <section class="abertura" aria-labelledby="titulo-painel">
+          <div>
+            <h1 id="titulo-painel"><span data-campo="titulo.0">Seu acervo jurídico,</span><em data-campo="titulo.1">pronto para consulta.</em></h1>
+            <p class="subtitulo" data-campo="subtitulo"></p>
+          </div>
+          <blockquote class="citacao"><p data-campo="citacao"></p></blockquote>
+        </section>
+
+        <section class="busca" aria-label="Busca no acervo">
+          <form id="form-busca" role="search">
+            <label for="campo-busca" class="sr">Buscar no acervo</label>
+            <svg class="busca-icone" aria-hidden="true"><use href="#i-busca"/></svg>
+            <input id="campo-busca" name="q" type="search" autocomplete="off" maxlength="120"
+                   placeholder="Busque lei, tema, erro ou ebook…">
+            <kbd class="atalho" aria-hidden="true">/</kbd>
+            <button type="submit" class="botao-primario">Buscar<svg aria-hidden="true"><use href="#i-seta"/></svg></button>
+          </form>
+          <div class="sugestoes"><span>Sugestões</span><div id="sugestoes" class="chips"></div></div>
+          <div id="resultados" class="resultados" aria-live="polite" hidden></div>
+        </section>
+
+        <p class="aviso" role="note"><svg aria-hidden="true"><use href="#i-info"/></svg><span data-campo="aviso_demonstrativo"></span></p>
+
+        <section class="bloco" aria-labelledby="titulo-areas">
+          <div class="bloco-cabecalho">
+            <h2 id="titulo-areas">Acesso rápido por área</h2>
+            <p>Fichas temáticas organizadas por ramo do Direito.</p>
+          </div>
+          <div id="areas" class="areas"></div>
+        </section>
+
+        <div class="grade">
+          <section class="cartao" aria-labelledby="titulo-erros">
+            <div class="cartao-cabecalho">
+              <span class="cartao-icone"><svg aria-hidden="true"><use href="#i-pena"/></svg></span>
+              <div><h2 id="titulo-erros">Erros recorrentes</h2><p>Correções de escrita jurídica.</p></div>
+            </div>
+            <div id="erros"></div>
+          </section>
+
+          <section class="cartao" aria-labelledby="titulo-retomar">
+            <div class="cartao-cabecalho">
+              <span class="cartao-icone"><svg aria-hidden="true"><use href="#i-relogio"/></svg></span>
+              <div><h2 id="titulo-retomar">Continuar de onde parou</h2><p>Sua consulta mais recente.</p></div>
+            </div>
+            <div id="retomar"></div>
+          </section>
+
+          <section class="cartao" aria-labelledby="titulo-ebooks">
+            <div class="cartao-cabecalho">
+              <span class="cartao-icone"><svg aria-hidden="true"><use href="#i-ebook"/></svg></span>
+              <div><h2 id="titulo-ebooks">Ebooks específicos</h2><p>Guias práticos por tema.</p></div>
+            </div>
+            <div id="ebooks" class="ebooks"></div>
+          </section>
+
+          <section class="cartao" aria-labelledby="titulo-leis">
+            <div class="cartao-cabecalho">
+              <span class="cartao-icone"><svg aria-hidden="true"><use href="#i-grade"/></svg></span>
+              <div><h2 id="titulo-leis">Links rápidos</h2><p>Principais diplomas legais.</p></div>
+            </div>
+            <div id="leis" class="leis"></div>
+          </section>
+        </div>
+
+        <footer class="rodape"><svg aria-hidden="true"><use href="#i-info"/></svg>Material de consulta · confira sempre a fonte oficial antes de usar.</footer>
+      </main>
+    </div>
+  </div>
+
+  <div id="aviso-flutuante" class="toast" role="status" hidden></div>
+</body>
+</html>

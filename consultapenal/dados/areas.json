@@ -1,0 +1,40 @@
+{
+  "areas": [
+    {
+      "id": "penal",
+      "nome": "Penal",
+      "descricao": "Crimes, penas e processo penal.",
+      "icone": "balanca",
+      "temas": [
+        {"id": "trafico-privilegiado", "titulo": "Tráfico privilegiado", "resumo": "Ficha temática de exemplo."},
+        {"id": "anpp", "titulo": "Acordo de não persecução penal", "resumo": "Ficha temática de exemplo."},
+        {"id": "dosimetria", "titulo": "Dosimetria da pena", "resumo": "Ficha temática de exemplo."},
+        {"id": "prisao-preventiva", "titulo": "Prisão preventiva", "resumo": "Ficha temática de exemplo."}
+      ]
+    },
+    {
+      "id": "civel",
+      "nome": "Cível",
+      "descricao": "Obrigações, contratos e processo civil.",
+      "icone": "pena",
+      "temas": [
+        {"id": "responsabilidade-civil", "titulo": "Responsabilidade civil", "resumo": "Ficha temática de exemplo."},
+        {"id": "contratos", "titulo": "Contratos em geral", "resumo": "Ficha temática de exemplo."},
+        {"id": "prazos-processuais", "titulo": "Prazos processuais", "resumo": "Ficha temática de exemplo."},
+        {"id": "tutela-provisoria", "titulo": "Tutela provisória", "resumo": "Ficha temática de exemplo."}
+      ]
+    },
+    {
+      "id": "familia",
+      "nome": "Família",
+      "descricao": "Alimentos, guarda, convivência e proteção.",
+      "icone": "casa",
+      "temas": [
+        {"id": "alimentos", "titulo": "Alimentos", "resumo": "Ficha temática de exemplo."},
+        {"id": "guarda-compartilhada", "titulo": "Guarda compartilhada", "resumo": "Ficha temática de exemplo."},
+        {"id": "divorcio", "titulo": "Divórcio e partilha", "resumo": "Ficha temática de exemplo."},
+        {"id": "medidas-protetivas", "titulo": "Medidas protetivas", "resumo": "Ficha temática de exemplo."}
+      ]
+    }
+  ]
+}

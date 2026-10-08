@@ -1,0 +1,22 @@
+{
+  "erros": [
+    {
+      "id": "citacao-dispositivo",
+      "titulo": "Citação de dispositivo legal",
+      "categoria": "Citação",
+      "incorreto": "Conforme artigo 33 §4º da Lei 11.343/06.",
+      "correto": "Conforme o art. 33, § 4º, da Lei n. 11.343/2006.",
+      "explicacao": "Exemplo demonstrativo de padronização: abreviação de artigo, vírgulas isolando o parágrafo e ano com quatro dígitos.",
+      "status": "demonstrativo"
+    },
+    {
+      "id": "a-nivel-de",
+      "titulo": "Uso de \"a nível de\"",
+      "categoria": "Redação",
+      "incorreto": "A nível de prova, não há elementos suficientes.",
+      "correto": "Quanto à prova, não há elementos suficientes.",
+      "explicacao": "Exemplo demonstrativo de substituição de expressão por construção mais precisa.",
+      "status": "demonstrativo"
+    }
+  ]
+}

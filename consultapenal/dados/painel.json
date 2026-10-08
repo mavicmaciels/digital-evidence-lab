@@ -1,0 +1,10 @@
+{
+  "nome": "Consulta Penal",
+  "slogan": "Penal · Cível · Família",
+  "titulo": ["Seu acervo jurídico,", "pronto para consulta."],
+  "subtitulo": "Leis, fichas temáticas, jurisprudência selecionada e checklists de revisão — cadastrados e conferidos manualmente.",
+  "citacao": "Conteúdo organizado para consulta rápida e conferência segura.",
+  "aviso_demonstrativo": "Conteúdo demonstrativo e fictício, usado apenas para visualizar o layout. Não constitui orientação jurídica validada. Confira sempre a fonte oficial.",
+  "status_acervo": "Acervo em construção",
+  "buscas_sugeridas": ["tráfico privilegiado", "alimentos", "guarda compartilhada", "ANPP", "citação de artigo", "responsabilidade civil"]
+}

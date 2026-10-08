@@ -1,0 +1,64 @@
+{
+  "leis": [
+    {
+      "id": "codigo-penal",
+      "sigla": "CP",
+      "nome": "Código Penal",
+      "norma": "Decreto-Lei n. 2.848/1940",
+      "area": "penal",
+      "icone": "livro",
+      "palavras_chave": ["crimes", "penas", "dosimetria", "parte geral", "parte especial"],
+      "status": "demonstrativo"
+    },
+    {
+      "id": "cpp",
+      "sigla": "CPP",
+      "nome": "Código de Processo Penal",
+      "norma": "Decreto-Lei n. 3.689/1941",
+      "area": "penal",
+      "icone": "documento",
+      "palavras_chave": ["inquérito", "ação penal", "prisão", "provas", "recursos"],
+      "status": "demonstrativo"
+    },
+    {
+      "id": "codigo-civil",
+      "sigla": "CC",
+      "nome": "Código Civil",
+      "norma": "Lei n. 10.406/2002",
+      "area": "civel",
+      "icone": "livro",
+      "palavras_chave": ["obrigações", "contratos", "responsabilidade civil", "família", "sucessões"],
+      "status": "demonstrativo"
+    },
+    {
+      "id": "cpc",
+      "sigla": "CPC",
+      "nome": "Código de Processo Civil",
+      "norma": "Lei n. 13.105/2015",
+      "area": "civel",
+      "icone": "documento",
+      "palavras_chave": ["prazos", "recursos", "execução", "tutela provisória", "cumprimento de sentença"],
+      "status": "demonstrativo"
+    },
+    {
+      "id": "maria-da-penha",
+      "sigla": "LMP",
+      "nome": "Lei Maria da Penha",
+      "norma": "Lei n. 11.340/2006",
+      "area": "familia",
+      "icone": "escudo",
+      "palavras_chave": ["violência doméstica", "medidas protetivas", "família"],
+      "status": "demonstrativo"
+    },
+    {
+      "id": "eca",
+      "sigla": "ECA",
+      "nome": "Estatuto da Criança e do Adolescente",
+      "norma": "Lei n. 8.069/1990",
+      "area": "familia",
+      "icone": "pessoas",
+      "palavras_chave": ["criança", "adolescente", "guarda", "medidas socioeducativas"],
+      "status": "demonstrativo"
+    }
+  ]
+}

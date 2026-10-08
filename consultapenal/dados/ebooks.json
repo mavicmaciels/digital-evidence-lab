@@ -1,0 +1,31 @@
+{
+  "ebooks": [
+    {
+      "id": "exemplo-anpp",
+      "titulo": "ANPP na prática",
+      "subtitulo": "Volume de exemplo",
+      "area": "penal",
+      "descricao": "Capa e título fictícios para demonstrar a vitrine.",
+      "capa": "bordo",
+      "status": "demonstrativo"
+    },
+    {
+      "id": "exemplo-alimentos",
+      "titulo": "Alimentos e guarda",
+      "subtitulo": "Volume de exemplo",
+      "area": "familia",
+      "descricao": "Capa e título fictícios para demonstrar a vitrine.",
+      "capa": "grafite",
+      "status": "demonstrativo"
+    },
+    {
+      "id": "exemplo-revisao",
+      "titulo": "Revisão de peças",
+      "subtitulo": "Volume de exemplo",
+      "area": "civel",
+      "descricao": "Capa e título fictícios para demonstrar a vitrine.",
+      "capa": "areia",
+      "status": "demonstrativo"
+    }
+  ]
+}
