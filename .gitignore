@@ -1,3 +1,6 @@
 __pycache__/
 *.pyc
 casos/
+
+# Impeccable engine binary: fetched on first run by the launcher (impeccable.style)
+.claude/skills/impeccable/scripts/bin/
